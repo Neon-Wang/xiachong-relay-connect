@@ -56,7 +56,7 @@ cd xiachong-relay-connect
 pip install -r requirements.txt
 
 python3 -u xiachong-connect.py \
-  --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev \
+  --relay https://xiachong-api.aged-sea-ee35.workers.dev \
   --link-code 你的LINK_CODE \
   --secret 你的SECRET
 ```
@@ -148,7 +148,7 @@ python3 -u xiachong-connect.py \
 
 ```bash
 nohup python3 -u xiachong-connect.py \
-  --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev \
+  --relay https://xiachong-api.aged-sea-ee35.workers.dev \
   --link-code XXXXXX \
   --secret xxxxxxxx \
   > connector.log 2>&1 &
