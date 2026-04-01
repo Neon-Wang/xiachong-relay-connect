@@ -61,7 +61,7 @@ XiaChong Relay Connector (Secure Channel Worker)
 
 用法:
     python3 -u connect.py \\
-        --relay https://xiachong-api.aged-sea-ee35.workers.dev \\
+        --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev \\
         --link-code A7X9K2 \\
         --secret f3a8b1c2d4e5
 """
