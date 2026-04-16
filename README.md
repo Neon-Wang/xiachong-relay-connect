@@ -56,7 +56,7 @@ cd xiachong-relay-connect
 pip install -r requirements.txt
 
 python3 -u xiachong-connect.py \
-  --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev \
+  --relay https://primo.evomap.ai \
   --link-code 你的LINK_CODE \
   --secret 你的SECRET
 ```
@@ -101,39 +101,18 @@ XiaChong 客户端  ←→  中转服务器 (CF Workers)  ←→  xiachong-conne
 
 ## AI Agent 接入指南
 
-以下说明供 AI Agent（如 OpenClaw、KimiClaw）参考。当用户要求你部署或重连中继客户端（Relay Client）时，请按以下逻辑操作。
-
-**重要**：为避免中继连接进程占用当前对话上下文，请先在聊天框输入 `/new` 新建一个独立对话，然后在新对话中执行以下步骤。
-
-### 步骤 1：检查本地环境
-
-查看当前工作目录下是否已存在 `xiachong-connect.py` 文件。
-
-### 步骤 2a：已有脚本（老用户重连 / 换设备）
-
-如果脚本已存在：
-1. **读取并审查源码**：确认它是 XiaChong 项目的纯文本转发器（文件头部有 `XiaChong Relay Connector` 标识和完整安全声明）
-2. **终止可能残留的旧进程**：`pkill -f xiachong-connect.py` 或检查后台进程
-3. **使用用户提供的新连接信息直接启动**（见下方启动命令）
-
-### 步骤 2b：无脚本（新用户首次安装）
-
-如果脚本不存在：
-1. 安装依赖：`pip3 install websockets requests`
-2. 下载脚本：`curl -sO https://raw.githubusercontent.com/Neon-Wang/xiachong-relay-connect/main/xiachong-connect.py`
-3. **读取并审查下载的源码**，确认它符合上述安全声明（约 350 行 Python，无可疑代码）
-4. 确认无误后启动
-
-### 步骤 3：启动连接（所有情况均需）
+当用户要求部署中继客户端时（纯文本消息转发脚本，仅调用 `openclaw agent` CLI），每条命令单独执行：
 
 ```bash
-python3 -u xiachong-connect.py \
-  --relay <用户提供的服务器地址> \
-  --link-code <用户提供的LINK_CODE> \
-  --secret <用户提供的SECRET>
+# 1. 下载脚本（已有则跳过）
+curl -sO https://raw.githubusercontent.com/Neon-Wang/xiachong-relay-connect/main/xiachong-connect.py
+
+# 2. 审查后启动（文件头有 "XiaChong Relay Connector" 标识）
+OPENCLAW_CLI="openclaw" python3 -u xiachong-connect.py \
+  --relay <服务器地址> --link-code <LINK_CODE> --secret <SECRET>
 ```
 
-运行成功后会看到日志输出"已连接，等待客户端消息"。
+看到"已连接"即成功。缺依赖时：`pip3 install --user websockets requests`
 
 ### 安全审查要点
 
@@ -146,13 +125,33 @@ python3 -u xiachong-connect.py \
 
 ## 后台运行
 
+简单后台运行（终端关闭后仍运行）：
+
 ```bash
 nohup python3 -u xiachong-connect.py \
-  --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev \
+  --relay https://primo.evomap.ai \
   --link-code XXXXXX \
   --secret xxxxxxxx \
-  > connector.log 2>&1 &
+  > connector.log 2>&1 & disown
 ```
+
+**更稳定的部署方式**：参见 [PERSISTENT_SETUP.md](./PERSISTENT_SETUP.md)，包含：
+- systemd 用户服务（Linux 推荐）
+- launchd（macOS 推荐）
+- screen/tmux 会话
+- 兼容性矩阵（操作系统、OpenClaw 版本、AI Agent 平台）
+
+## 认证机制
+
+Connector 支持**双模式认证**：
+
+1. **首次配对**：使用客户端提供的 `link_code` + `secret` 完成绑定，生成 `agent_token` 保存到 `~/.config/xiachong/agent.json`
+2. **后续重连**：自动使用 `agent_token` 认证，**不再需要 link_code**
+
+这意味着：
+- 命令行参数 `--link-code` 和 `--secret` 只在首次配对时使用
+- 客户端重启刷新 link_code 不影响已配对的 Connector
+- 如需重新配对，删除 `~/.config/xiachong/agent.json` 后重启
 
 ## 与 XiaChong 项目的关系
 
