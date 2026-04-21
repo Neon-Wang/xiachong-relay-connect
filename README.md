@@ -101,11 +101,16 @@ XiaChong 客户端  ←→  中转服务器 (CF Workers)  ←→  xiachong-conne
 
 ## AI Agent 接入指南
 
+> **重要**：在处理任何 Connector 部署或调试任务之前，**必须**先阅读 [PERSISTENT_SETUP.md](./PERSISTENT_SETUP.md)。该文档包含：
+> - 关键的诊断流程（防止在表面问题上浪费时间）
+> - 冲突进程检测方法（80% 的连接问题根源在这里）
+> - 完整的持久化部署方案
+
 当用户要求部署中继客户端时（纯文本消息转发脚本，仅调用 `openclaw agent` CLI），每条命令单独执行：
 
 ```bash
 # 1. 下载脚本（已有则跳过）
-curl -sO https://raw.githubusercontent.com/Neon-Wang/xiachong-relay-connect/main/xiachong-connect.py
+curl -sO https://primo.evomap.ai/connector/xiachong-connect.py
 
 # 2. 审查后启动（文件头有 "XiaChong Relay Connector" 标识）
 OPENCLAW_CLI="openclaw" python3 -u xiachong-connect.py \

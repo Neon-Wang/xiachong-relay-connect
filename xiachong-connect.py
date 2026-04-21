@@ -186,11 +186,44 @@ def do_link(relay_url: str, link_code: str, secret: str, agent_token: str | None
     return res.json()
 
 
+# ── Per-session-label serialization lock ─────────────────────────────────
+# OpenClaw CLI takes an exclusive `<label>.jsonl.lock` for every `agent`
+# invocation against a given --session-id. If the connector spawns two
+# agents against the same label concurrently (e.g. user types 3 messages
+# in quick succession), the second/third subprocess race the lock, time
+# out (~10s), then OpenClaw falls back to the gateway path which fails
+# with "GatewayClientRequestError: pairing required" — surfacing as
+# "[Error] CLI 调用失败: ..." replies to the client.
+#
+# We serialize per-label here so:
+#   - Multiple messages in the same chat session queue cleanly (preserves
+#     conversational ordering, which is what users expect anyway).
+#   - Init flows (label "init-<agent_id>") and chat flows (DEFAULT label)
+#     stay parallel — they touch different lock files.
+_CLI_LABEL_LOCKS: dict[str, asyncio.Lock] = {}
+_CLI_LOCKS_GUARD: asyncio.Lock | None = None
+
+
+async def _get_cli_lock(label: str) -> asyncio.Lock:
+    global _CLI_LOCKS_GUARD
+    if _CLI_LOCKS_GUARD is None:
+        _CLI_LOCKS_GUARD = asyncio.Lock()
+    async with _CLI_LOCKS_GUARD:
+        lock = _CLI_LABEL_LOCKS.get(label)
+        if lock is None:
+            lock = asyncio.Lock()
+            _CLI_LABEL_LOCKS[label] = lock
+        return lock
+
+
 async def call_openclaw_cli(message: str, label: str = DEFAULT_SESSION_LABEL, timeout: float = 120) -> str:
     """
     Send a message via the official CLI with a dedicated session ID.
     The --session-id ensures all messages from this client share the same
     conversation context, while staying isolated from the main terminal session.
+
+    Calls against the same label are serialized via _get_cli_lock to avoid
+    contending on OpenClaw's per-session file lock.
     """
     if len(message) > MAX_MESSAGE_LENGTH:
         return "[Error] 消息过长"
@@ -199,24 +232,26 @@ async def call_openclaw_cli(message: str, label: str = DEFAULT_SESSION_LABEL, ti
     if not cli_path:
         return f"[Error] 找不到 {OPENCLAW_CLI} 命令，请确保 OpenClaw CLI 已安装并在 PATH 中"
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            cli_path, "agent", "--session-id", label, "--message", message,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    lock = await _get_cli_lock(label)
+    async with lock:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                cli_path, "agent", "--session-id", label, "--message", message,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
 
-        if proc.returncode != 0:
-            err = stderr.decode().strip() or f"exit code {proc.returncode}"
-            return f"[Error] CLI 调用失败: {err}"
+            if proc.returncode != 0:
+                err = stderr.decode().strip() or f"exit code {proc.returncode}"
+                return f"[Error] CLI 调用失败: {err}"
 
-        return stdout.decode().strip() or "[Empty response]"
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "[Error] AI 响应超时"
-    except Exception as e:
-        return f"[Error] {e}"
+            return stdout.decode().strip() or "[Empty response]"
+        except asyncio.TimeoutError:
+            proc.kill()
+            return "[Error] AI 响应超时"
+        except Exception as e:
+            return f"[Error] {e}"
 
 
 def strip_thinking(raw: str) -> str:

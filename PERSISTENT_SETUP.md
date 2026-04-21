@@ -1,6 +1,22 @@
 # XiaChong Connector 持久化部署 Skill
 
-本文档供 AI Agent（OpenClaw/Kimi Code 等）参考，用于在用户机器上稳定运行 XiaChong Relay Connector。
+> **AI Agent 必读警告**
+> 
+> 当用户报告 Connector 连接失败时，你**必须**按照本文档"常见问题排查"章节的顺序执行诊断，**不得跳过任何步骤**。
+> 
+> **最常见的错误**：只检查配置文件格式、只看报错信息，而忽略"是否有其他进程在竞争连接"。这会导致你在表面问题上浪费大量时间。
+> 
+> **正确的诊断顺序**：
+> 1. 检查冲突进程（systemd 服务、screen、旧进程）← 80% 的问题在这里
+> 2. 检查凭证状态（agent.json 是否存在/有效）
+> 3. 检查日志错误信息
+> 4. 检查网络连通性
+> 
+> 直接跳到"重新配对"而不先排查冲突进程 = 浪费时间。
+
+---
+
+本文档供 AI Agent（OpenClaw/Kimi Claw 等）参考，用于在用户机器上稳定运行 XiaChong Relay Connector。
 
 **核心问题**：Connector 是长期运行的 WebSocket 守护进程，不能用 `timeout` 或短 `yieldMs` 启动，否则会在 AI session 结束时被终止。
 
@@ -370,6 +386,107 @@ grep -E "已连接|connected|等待客户端" __WORKDIR__/xiachong.log | tail -5
 
 ## 常见问题排查
 
+> **重要**：本章节是**强制阅读**内容。在用户报告连接问题时，必须按顺序执行以下诊断步骤，不要跳过任何一步。
+
+### 诊断第一步：检查是否有冲突进程（最常见原因！）
+
+**这是最容易被忽略但最常见的问题**：用户机器上可能有多个 Connector 实例在竞争连接。
+
+```bash
+# 必须首先执行！查找所有正在运行的 xiachong 相关进程
+ps aux | grep -E "xiachong|connector" | grep -v grep
+
+# 检查 systemd 服务（即使用户说"没配置过"也要检查！用户可能忘了）
+systemctl --user list-units --all | grep -i xiachong 2>/dev/null || echo "无 systemd 用户服务"
+systemctl list-units --all | grep -i xiachong 2>/dev/null || echo "无 systemd 系统服务"
+
+# 检查 launchd（macOS）
+launchctl list 2>/dev/null | grep -i xiachong || echo "无 launchd 服务"
+
+# 检查 screen/tmux 会话
+screen -list 2>/dev/null | grep -i xiachong || echo "无 screen 会话"
+tmux list-sessions 2>/dev/null | grep -i xiachong || echo "无 tmux 会话"
+```
+
+**诊断逻辑**：
+- 如果发现任何运行中的进程或服务 → 这很可能就是问题根源
+- 一个 agent_token 只能被一个进程使用
+- 如果旧进程先抢到连接，新进程会一直失败
+
+**解决步骤**：
+```bash
+# 1. 停止所有冲突进程
+systemctl --user stop xiachong-connector 2>/dev/null || true
+systemctl --user stop xiachong-relay 2>/dev/null || true  # 可能有旧名称
+pkill -f "xiachong-connect" 2>/dev/null || true
+screen -S xiachong -X quit 2>/dev/null || true
+tmux kill-session -t xiachong 2>/dev/null || true
+
+# 2. 确认已清理干净
+ps aux | grep -E "xiachong|connector" | grep -v grep
+# 应该没有输出
+
+# 3. 删除可能冲突的旧凭证
+rm -f ~/.config/xiachong/agent.json
+
+# 4. 现在才开始重新配对
+```
+
+### 诊断第二步：检查凭证状态
+
+```bash
+# 检查是否存在 agent.json
+cat ~/.config/xiachong/agent.json 2>/dev/null && echo "--- 上方是现有凭证 ---" || echo "无 agent.json，需要首次配对"
+
+# 如果存在 agent.json，检查其内容是否完整
+# 应该包含 agent_token 和 refresh_token 字段
+```
+
+**诊断逻辑**：
+- 如果有 agent.json 且内容完整 → 不需要 link-code，直接用 token 重连
+- 如果有 agent.json 但报错 "Invalid agent token" → 凭证已失效，需要删除并重新配对
+- 如果无 agent.json → 需要用户提供 link-code 和 secret 进行首次配对
+
+### 诊断第三步：检查日志错误信息
+
+```bash
+# 查看最近的日志（根据使用的方案选择）
+# systemd
+journalctl --user -u xiachong-connector -n 50 --no-pager 2>/dev/null || true
+
+# 日志文件
+tail -50 ~/xiachong.log 2>/dev/null || true
+tail -50 ~/.xiachong/xiachong.log 2>/dev/null || true
+
+# 查找关键错误模式
+grep -E "error|Error|失败|断开|Invalid|expired|conflict" ~/xiachong.log 2>/dev/null | tail -20
+```
+
+**常见错误及含义**：
+| 错误信息 | 含义 | 解决方向 |
+|---------|------|---------|
+| "Invalid agent token" | agent.json 中的 token 已失效 | 删除 agent.json，重新配对 |
+| "Invalid link code" | link-code 错误或已过期 | 从客户端获取新的 link-code |
+| "Connection refused" | 服务器不可达 | 检查网络、DNS、防火墙 |
+| "Another client connected" | 有其他进程抢连接 | 回到诊断第一步 |
+| "Session expired" | 服务端 session 过期 | 删除 agent.json，重新配对 |
+
+### 诊断第四步：网络连通性
+
+```bash
+# 检查是否能访问 relay 服务器
+curl -s -o /dev/null -w "%{http_code}" https://primo.evomap.ai/health || echo "无法访问 staging"
+curl -s -o /dev/null -w "%{http_code}" https://xiachong-api.aged-sea-ee35.workers.dev/health || echo "无法访问 production"
+
+# 检查 DNS 解析
+nslookup primo.evomap.ai 2>/dev/null || host primo.evomap.ai 2>/dev/null || echo "DNS 解析失败"
+
+# 检查是否有代理干扰
+echo $http_proxy $https_proxy $HTTP_PROXY $HTTPS_PROXY
+```
+
+---
+
 ### 问题：找不到 openclaw 命令
 
 **症状**：日志显示 `[!] 找不到 openclaw 命令`
@@ -526,7 +643,7 @@ journalctl --user -u xiachong-connector -n 50
 
 ### AI Agent 平台兼容性
 
-**OpenClaw TUI / Kimi Code**
+**OpenClaw TUI / Kimi Claw**
 - exec 工具支持 `background: true`，但进程会随 session 终止
 - 必须用 nohup/screen/systemd 脱离 session
 
