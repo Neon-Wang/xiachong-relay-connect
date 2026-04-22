@@ -2,8 +2,10 @@
 
 > EvoPaimo 桌面宠物项目的中继连接器 — 在 OpenClaw 所在机器上运行，将 AI 回复安全地转发给远程桌面客户端。
 >
-> npm 包名：`evopaimo-relay-connect`（旧版 `xiachong-relay-connect@1.1.x` 已 deprecate）
-> GitHub 仓库名沿用 `Neon-Wang/xiachong-relay-connect`（重命名仓库会破坏已存在的 git remote）
+> npm 包名：`evopaimo-relay-connect`
+> GitHub 镜像仓库：`Neon-Wang/xiachong-relay-connect`（仓库名沿用旧名，因为重命名会破坏已存在的 git remote）
+>
+> **维护者：要发版/排查 CI publish 失败，请直接读 [`RELEASE.md`](./RELEASE.md)。**
 
 ---
 
