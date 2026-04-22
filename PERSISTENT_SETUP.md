@@ -1,105 +1,58 @@
 # EvoPaimo Connector 持久化部署 Skill
 
-> # ⚠️ 关于本文档"OpenClaw 通信模式 / hooks 模式"描述的紧急更正
->
-> 本文档下方关于"hooks 模式 (POST 127.0.0.1:18789/hooks/agent) 优先 / CLI fallback"和 `evopaimo-connect setup` 子命令的所有描述**基于错误前提**——OpenClaw 在 18789 端口运行的是 Web Control UI，不是 hook server。详见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)。
->
-> **当前唯一可工作的模式是 CLI 模式**——connector 通过 `subprocess` 调用 `openclaw agent --message <text>`。诊断时**忽略**下方文档里"诊断第零步：检查 hooks/CLI 模式"和"hooks 兼容矩阵"等内容，直接从"诊断第一步：检查冲突进程"开始。
->
-> ---
+本文档供 AI Agent（OpenClaw / Kimi Claw / Claude Code 等）参考，用于在用户机器上稳定运行 EvoPaimo Relay Connector。
+
+**核心问题**：connector 是长期运行的 WebSocket 守护进程，不能用 `timeout` 或短 `yieldMs` 启动，否则会在 AI session 结束时被终止。
 
 > **AI Agent 必读警告**
 >
-> 当用户报告 Connector 连接失败时，你**必须**按照本文档"常见问题排查"章节的顺序执行诊断，**不得跳过任何步骤**。
+> 当用户报告 connector 连接失败时，你**必须**按照本文档"常见问题排查"章节的顺序执行诊断，**不得跳过任何步骤**。
 >
 > **最常见的错误**：只检查配置文件格式、只看报错信息，而忽略"是否有其他进程在竞争连接"。这会导致你在表面问题上浪费大量时间。
 >
-> **正确的诊断顺序**（已根据 POSTMORTEM 修订）：
+> **正确的诊断顺序**：
 >
 > 1. 检查冲突进程（systemd 服务、screen、旧进程）← 80% 的问题在这里
-> 2. 检查凭证状态（agent.json 是否存在/有效）
+> 2. 检查凭证状态（`agent.json` 是否存在/有效）
 > 3. 检查日志错误信息
-> 4. 检查网络连通性
+> 4. 检查 OpenClaw CLI 是否在 PATH
+> 5. 检查网络连通性
 >
 > 直接跳到"重新配对"而不先排查冲突进程 = 浪费时间。
 
 ---
 
-本文档供 AI Agent（OpenClaw/Kimi Claw 等）参考，用于在用户机器上稳定运行 EvoPaimo Relay Connector。
+## 通信模式（一句话）
 
-**核心问题**：Connector 是长期运行的 WebSocket 守护进程，不能用 `timeout` 或短 `yieldMs` 启动，否则会在 AI session 结束时被终止。
+connector 1.3+ 通过 `subprocess.create_subprocess_exec()` 调用 `openclaw agent --session-id <label> --message <text>` 把消息交给本地 OpenClaw。**这是当前唯一支持的模式**。`openclaw` 必须在 PATH 中（或通过 `OPENCLAW_CLI` 环境变量指定绝对路径），找不到时 connector 仍会启动但只能以 echo 模式回显消息。
 
----
-
-## OpenClaw 通信模式（重要，先看）
-
-connector 1.3+ 支持两种与 OpenClaw 通信的模式，启动时会自动探测：
-
-| 模式 | 协议 | OpenClaw 要求 | 启用方式 |
-|---|---|---|---|
-| **hooks**（推荐） | HTTP `POST /hooks/agent` | OpenClaw 26.x+ 且本机已配置好 hooks 端点 | 跑一次 `evopaimo-connect setup` |
-| **CLI**（兜底） | `openclaw agent --message …` 子进程 | 任意 OpenClaw 版本，PATH 中能找到 `openclaw` | 默认可用，无需额外配置 |
-
-**自动决策规则**（由 connector 启动时的 `detect_transport` 函数决定）：
-
-1. 如果 `~/.config/evopaimo/openclaw-hooks.json` 存在 + hooks 健康检查通过 → 用 hooks 模式
-2. 否则 → 用 CLI 模式（前提是 PATH 中有 `openclaw`）
-3. 运行时 hooks 连续 3 次失败（或单次 401/AuthError）→ 自动单向降级到 CLI 模式
-
-**何时引导用户启用 hooks 模式**：
-
-- 用户首次部署 connector → 直接引导跑 setup，从一开始就用 hooks（更稳定）
-- 用户报告"OpenClaw 子进程偶发卡死"或"高并发下卡顿" → 切到 hooks 模式（不用反复 fork 子进程）
-- 用户机器上 OpenClaw 版本 ≥ 26.x → 优先 hooks
-- 用户机器上 OpenClaw 版本 < 26.x、或 OpenClaw 由第三方托管禁用了 hooks → 不要尝试 hooks，直接走 CLI 模式
-
-**启用 hooks 模式的命令**：
-
-```bash
-# 一次性配置（需要本机 OpenClaw CLI 可用）
-evopaimo-connect setup
-
-# 验证 hooks 是否能联通
-evopaimo-connect setup --verify
-
-# 查看当前会用哪个模式
-evopaimo-connect status
-
-# 撤销 hooks 配置（回退到纯 CLI 模式）
-evopaimo-connect setup --rollback
-```
-
-**详细资料**：
-
-- [connector/README.md](README.md) — 端到端使用文档（推荐先看）
-- [docs/specs/openclaw-hooks-integration/spec-1-hooks-transport.md](../docs/specs/openclaw-hooks-integration/spec-1-hooks-transport.md) — 设计文档（spec-1）
-- [docs/specs/openclaw-hooks-integration/background-openclaw-architecture.md](../docs/specs/openclaw-hooks-integration/background-openclaw-architecture.md) — OpenClaw 架构背景
+> **历史背景**：1.2.x 曾尝试加入"hooks 模式"作为 HTTP 通道，后发现 OpenClaw 在 `127.0.0.1:18789` 跑的是 Web Control UI 而非 hooks server——这一通道不存在。1.3.0 已删除全部 hooks 相关代码。详细复盘见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)。Phase 2 规划是落到 OpenClaw 官方 channel 插件，参见 [`docs/specs/openclaw-hooks-integration/phase-2-roadmap.md`](../docs/specs/openclaw-hooks-integration/phase-2-roadmap.md)。
 
 ---
 
 ## 认证机制说明（重要）
 
-Connector 支持**双模式认证**，理解这一点对于正确部署至关重要：
+connector 支持**双模式认证**，理解这一点对于正确部署至关重要：
 
 **首次配对流程**：
 
 1. 客户端显示 `link_code` + `secret`
-2. Connector 用 `link_code` + `secret` 调用 `/api/link` 完成配对
-3. 配对成功后，Connector 生成 `agent_token` 并保存到 `~/.config/evopaimo/agent.json`
+2. connector 用 `link_code` + `secret` 调用 `/api/link` 完成配对
+3. 配对成功后，connector 生成 `agent_token` 并保存到 `~/.config/evopaimo/agent.json`
 
 **后续重连流程**：
 
-1. Connector 检测到 `~/.config/evopaimo/agent.json` 存在
+1. connector 检测到 `~/.config/evopaimo/agent.json` 存在
 2. 使用 `agent_token` 调用 `/api/agent-auth` 直接认证
 3. **不再需要 `link_code` 和 `secret`**
 
 **这意味着**：
 
 - 命令行中的 `--link-code` 和 `--secret` 参数**只在首次配对时有效**
-- 一旦配对成功，即使客户端重启刷新了 `link_code`，Connector 依然可以正常连接
+- 一旦配对成功，即使客户端重启刷新了 `link_code`，connector 依然可以正常连接
 - 如果需要重新配对（换绑），需要先删除 `~/.config/evopaimo/agent.json`
 
-**agent.json 文件位置**：
+**`agent.json` 文件位置**：
 
 ```bash
 # 默认路径
@@ -112,10 +65,7 @@ python3 evopaimo-connect.py --agent-file /path/to/agent.json ...
 **重新配对（换绑）**：
 
 ```bash
-# 删除旧凭证
 rm -f ~/.config/evopaimo/agent.json
-
-# 用新的 link-code 和 secret 重新启动
 python3 evopaimo-connect.py --relay ... --link-code NEW_CODE --secret NEW_SECRET
 ```
 
@@ -126,29 +76,19 @@ python3 evopaimo-connect.py --relay ... --link-code NEW_CODE --secret NEW_SECRET
 执行以下命令收集环境信息：
 
 ```bash
-# 操作系统
 uname -s
-
-# Linux 发行版（如适用）
 cat /etc/os-release 2>/dev/null | grep -E "^ID=|^VERSION_ID=" || echo "non-linux"
 
-# 可用的持久化工具
 which systemctl 2>/dev/null && echo "HAS_SYSTEMD"
 which launchctl 2>/dev/null && echo "HAS_LAUNCHD"
 which screen 2>/dev/null && echo "HAS_SCREEN"
 which tmux 2>/dev/null && echo "HAS_TMUX"
 which nohup 2>/dev/null && echo "HAS_NOHUP"
 
-# Python 路径
 which python3
-
-# OpenClaw CLI 路径
 which openclaw 2>/dev/null || ls ~/.npm-global/bin/openclaw 2>/dev/null || ls /usr/local/bin/openclaw 2>/dev/null || echo "OPENCLAW_NOT_IN_PATH"
 
-# 当前用户
 whoami
-
-# 是否有 sudo
 sudo -n true 2>/dev/null && echo "HAS_SUDO" || echo "NO_SUDO"
 ```
 
@@ -176,10 +116,8 @@ sudo -n true 2>/dev/null && echo "HAS_SUDO" || echo "NO_SUDO"
 **部署步骤**：
 
 ```bash
-# 1. 创建目录
 mkdir -p ~/.config/systemd/user
 
-# 2. 创建服务文件
 cat > ~/.config/systemd/user/evopaimo-connector.service << 'EOF'
 [Unit]
 Description=EvoPaimo Relay Connector
@@ -200,22 +138,20 @@ StandardError=journal
 WantedBy=default.target
 EOF
 
-# 3. 替换占位符（AI 需要用实际值替换）
+# AI 需要用实际值替换占位符:
 # __OPENCLAW_PATH__ = openclaw 的完整路径
 # __WORKDIR__ = evopaimo-connect.py 所在目录
 # __RELAY_URL__ = 中转服务器地址
 # __LINK_CODE__ = 绑定码
 # __SECRET__ = 密钥
 
-# 4. 启用并启动
 systemctl --user daemon-reload
 systemctl --user enable evopaimo-connector
 systemctl --user start evopaimo-connector
 
-# 5. 让用户服务在登出后继续运行（需要一次）
+# 让用户服务在登出后继续运行（需要一次）
 loginctl enable-linger $(whoami)
 
-# 6. 验证
 systemctl --user status evopaimo-connector
 journalctl --user -u evopaimo-connector -n 20
 ```
@@ -223,19 +159,10 @@ journalctl --user -u evopaimo-connector -n 20
 **管理命令**：
 
 ```bash
-# 查看状态
 systemctl --user status evopaimo-connector
-
-# 查看日志
 journalctl --user -u evopaimo-connector -f
-
-# 重启
 systemctl --user restart evopaimo-connector
-
-# 停止
 systemctl --user stop evopaimo-connector
-
-# 禁用开机启动
 systemctl --user disable evopaimo-connector
 ```
 
@@ -250,7 +177,6 @@ systemctl --user disable evopaimo-connector
 **部署步骤**：
 
 ```bash
-# 1. 创建 plist 文件
 cat > ~/Library/LaunchAgents/ai.evopaimo.connector.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -289,10 +215,7 @@ cat > ~/Library/LaunchAgents/ai.evopaimo.connector.plist << 'EOF'
 </plist>
 EOF
 
-# 2. 替换占位符后加载
 launchctl load ~/Library/LaunchAgents/ai.evopaimo.connector.plist
-
-# 3. 验证
 launchctl list | grep evopaimo
 tail -20 __WORKDIR__/evopaimo.log
 ```
@@ -300,13 +223,8 @@ tail -20 __WORKDIR__/evopaimo.log
 **管理命令**：
 
 ```bash
-# 停止
 launchctl unload ~/Library/LaunchAgents/ai.evopaimo.connector.plist
-
-# 启动
 launchctl load ~/Library/LaunchAgents/ai.evopaimo.connector.plist
-
-# 查看日志
 tail -f __WORKDIR__/evopaimo.log
 ```
 
@@ -317,19 +235,16 @@ tail -f __WORKDIR__/evopaimo.log
 **适用条件**：
 
 - `which screen` 有输出
-- 无法使用 systemd/launchd
+- 无法使用 systemd / launchd
 
 **部署步骤**：
 
 ```bash
-# 1. 先清理可能存在的旧进程
 pkill -f "evopaimo-connect.py" 2>/dev/null || true
 screen -S evopaimo -X quit 2>/dev/null || true
 
-# 2. 在 screen 中启动
 screen -dmS evopaimo bash -c 'cd __WORKDIR__ && OPENCLAW_CLI=__OPENCLAW_PATH__ python3 -u evopaimo-connect.py --relay __RELAY_URL__ --link-code __LINK_CODE__ --secret __SECRET__ 2>&1 | tee evopaimo.log'
 
-# 3. 验证
 sleep 3
 screen -list | grep evopaimo
 tail -20 __WORKDIR__/evopaimo.log
@@ -338,16 +253,12 @@ tail -20 __WORKDIR__/evopaimo.log
 **管理命令**：
 
 ```bash
-# 进入 screen 查看实时输出
-screen -r evopaimo
-
-# 退出 screen（不终止进程）：按 Ctrl+A 然后按 D
-
-# 终止
-screen -S evopaimo -X quit
+screen -r evopaimo                  # 进入查看实时输出
+# Ctrl+A 然后 D                       # 退出但不终止进程
+screen -S evopaimo -X quit           # 终止
 ```
 
-**注意**：screen 会话在系统重启后不会自动恢复，需要手动重新启动或配合 crontab @reboot。
+**注意**：screen 会话在系统重启后不会自动恢复，需手动重启或配合 `crontab @reboot`。
 
 ---
 
@@ -361,14 +272,11 @@ screen -S evopaimo -X quit
 **部署步骤**：
 
 ```bash
-# 1. 清理
 pkill -f "evopaimo-connect.py" 2>/dev/null || true
 tmux kill-session -t evopaimo 2>/dev/null || true
 
-# 2. 启动
 tmux new-session -d -s evopaimo "cd __WORKDIR__ && OPENCLAW_CLI=__OPENCLAW_PATH__ python3 -u evopaimo-connect.py --relay __RELAY_URL__ --link-code __LINK_CODE__ --secret __SECRET__ 2>&1 | tee evopaimo.log"
 
-# 3. 验证
 sleep 3
 tmux list-sessions | grep evopaimo
 tail -20 __WORKDIR__/evopaimo.log
@@ -377,13 +285,9 @@ tail -20 __WORKDIR__/evopaimo.log
 **管理命令**：
 
 ```bash
-# 进入 tmux 查看
-tmux attach -t evopaimo
-
-# 退出（不终止）：按 Ctrl+B 然后按 D
-
-# 终止
-tmux kill-session -t evopaimo
+tmux attach -t evopaimo              # 进入查看
+# Ctrl+B 然后 D                        # 退出但不终止
+tmux kill-session -t evopaimo        # 终止
 ```
 
 ---
@@ -392,17 +296,15 @@ tmux kill-session -t evopaimo
 
 **适用条件**：
 
-- 所有 Unix/Linux/macOS 系统
+- 所有 Unix / Linux / macOS 系统
 - 其他方案都不可用时的最后手段
 
 **部署步骤**：
 
 ```bash
-# 1. 清理旧进程
 pkill -f "evopaimo-connect.py" 2>/dev/null || true
 sleep 1
 
-# 2. 启动
 cd __WORKDIR__ && \
 OPENCLAW_CLI=__OPENCLAW_PATH__ nohup python3 -u evopaimo-connect.py \
   --relay __RELAY_URL__ \
@@ -410,10 +312,8 @@ OPENCLAW_CLI=__OPENCLAW_PATH__ nohup python3 -u evopaimo-connect.py \
   --secret __SECRET__ \
   > evopaimo.log 2>&1 & disown
 
-# 3. 记录 PID
 echo $! > evopaimo.pid
 
-# 4. 验证
 sleep 3
 ps -p $(cat evopaimo.pid) && echo "进程运行中"
 tail -20 evopaimo.log
@@ -422,13 +322,8 @@ tail -20 evopaimo.log
 **管理命令**：
 
 ```bash
-# 查看状态
 ps -p $(cat __WORKDIR__/evopaimo.pid) 2>/dev/null && echo "运行中" || echo "已停止"
-
-# 查看日志
 tail -f __WORKDIR__/evopaimo.log
-
-# 终止
 kill $(cat __WORKDIR__/evopaimo.pid)
 ```
 
@@ -448,7 +343,8 @@ ps aux | grep "evopaimo-connect" | grep -v grep
 grep -E "已连接|connected|等待客户端" __WORKDIR__/evopaimo.log | tail -5
 
 # 3. 如果日志显示以下内容，说明成功：
-#    [OK] 绑定成功，App ID: openclaw_xxxxxx
+#    [OK] 配对成功，App ID: openclaw_xxxxxx
+#    [OK] OpenClaw CLI: /home/user/.npm-global/bin/openclaw
 #    [OK] 已连接，等待客户端消息...
 ```
 
@@ -458,57 +354,9 @@ grep -E "已连接|connected|等待客户端" __WORKDIR__/evopaimo.log | tail -5
 
 > **重要**：本章节是**强制阅读**内容。在用户报告连接问题时，必须按顺序执行以下诊断步骤，不要跳过任何一步。
 
-### 诊断第零步：检查 connector 当前用的是 hooks 还是 CLI 模式
-
-**为什么先做这步**：connector 1.3+ 的故障表现会因模式不同而差异巨大：
-
-- hooks 模式问题 → 看 OpenClaw HTTP 端点 + token；CLI 子进程相关排查无效
-- CLI 模式问题 → 看 `openclaw` 命令路径、子进程是否卡死；hooks 端点状态无关
-
-```bash
-# 一条命令看清当前状态
-evopaimo-connect status
-```
-
-输出会包含：
-
-- relay 凭证状态（是否有 `~/.config/evopaimo/agent.json`）
-- hooks 配置状态（是否有 `~/.config/evopaimo/openclaw-hooks.json` + 端点是否 alive）
-- CLI 可用性（openclaw 是否在 PATH）
-- 决策结果："默认会使用 X 模式"
-
-**根据 status 结果选择后续诊断方向**：
-
-| status 显示 | 含义 | 后续诊断重点 |
-|---|---|---|
-| `默认模式：hooks (健康)` | 当前用 hooks | 走下方"hooks 模式诊断分支" |
-| `默认模式：cli (hooks 不可用)` | hooks 配过但端点连不上 | 同时排查 hooks 端点 + 进程冲突 |
-| `默认模式：cli (无 hooks 配置)` | 从未启用 hooks | 走传统 CLI 诊断（第一步 → 第四步） |
-| `默认模式：无 (hooks 和 cli 都不可用)` | 致命，OpenClaw 完全不可达 | 先装/启动 OpenClaw |
-
-**hooks 模式诊断分支**：
-
-```bash
-# 1. 检查 openclaw-hooks.json 是否存在
-cat ~/.config/evopaimo/openclaw-hooks.json 2>/dev/null || echo "无 hooks 配置"
-
-# 2. 验证端点是否还连得上 + token 有效
-evopaimo-connect setup --verify
-
-# 3. 如果 verify 失败但确认 OpenClaw 还在运行
-#    很可能是 OpenClaw 端 hooks 配置被改 / token 改了
-#    重新跑一次 setup 重置 token
-evopaimo-connect setup
-
-# 4. 如果用户明确不想用 hooks，回退到纯 CLI 模式
-evopaimo-connect setup --rollback
-```
-
-**hooks → CLI 自动降级**：connector 运行时 hooks 连续 3 次失败（或单次 401/AuthError）会自动降级到 CLI 模式，本次进程不再回切（避免来回抖动）。下次启动时会重新探测。日志里会出现 `[!] Hooks 模式失败 N 次，自动降级到 CLI` 类似字样。
-
 ### 诊断第一步：检查是否有冲突进程（最常见原因！）
 
-**这是最容易被忽略但最常见的问题**：用户机器上可能有多个 Connector 实例在竞争连接。
+**这是最容易被忽略但最常见的问题**：用户机器上可能有多个 connector 实例在竞争连接。
 
 ```bash
 # 必须首先执行！查找所有正在运行的 evopaimo（含旧 xiachong）相关进程
@@ -529,7 +377,7 @@ tmux list-sessions 2>/dev/null | grep -iE "evopaimo|xiachong" || echo "无 tmux 
 **诊断逻辑**：
 
 - 如果发现任何运行中的进程或服务 → 这很可能就是问题根源
-- 一个 agent_token 只能被一个进程使用
+- 一个 `agent_token` 只能被一个进程使用
 - 如果旧进程先抢到连接，新进程会一直失败
 
 **解决步骤**：
@@ -538,9 +386,9 @@ tmux list-sessions 2>/dev/null | grep -iE "evopaimo|xiachong" || echo "无 tmux 
 # 1. 停止所有冲突进程
 systemctl --user stop evopaimo-connector 2>/dev/null || true
 systemctl --user stop xiachong-connector 2>/dev/null || true  # 旧版本兼容
-systemctl --user stop xiachong-relay 2>/dev/null || true  # 更旧版本兼容
+systemctl --user stop xiachong-relay 2>/dev/null || true       # 更旧版本兼容
 pkill -f "evopaimo-connect" 2>/dev/null || true
-pkill -f "xiachong-connect" 2>/dev/null || true  # 旧版本兼容
+pkill -f "xiachong-connect" 2>/dev/null || true                # 旧版本兼容
 screen -S evopaimo -X quit 2>/dev/null || true
 tmux kill-session -t evopaimo 2>/dev/null || true
 
@@ -557,23 +405,18 @@ rm -f ~/.config/evopaimo/agent.json
 ### 诊断第二步：检查凭证状态
 
 ```bash
-# 检查是否存在 agent.json
 cat ~/.config/evopaimo/agent.json 2>/dev/null && echo "--- 上方是现有凭证 ---" || echo "无 agent.json，需要首次配对"
-
-# 如果存在 agent.json，检查其内容是否完整
-# 应该包含 agent_token 和 refresh_token 字段
 ```
 
 **诊断逻辑**：
 
-- 如果有 agent.json 且内容完整 → 不需要 link-code，直接用 token 重连
-- 如果有 agent.json 但报错 "Invalid agent token" → 凭证已失效，需要删除并重新配对
-- 如果无 agent.json → 需要用户提供 link-code 和 secret 进行首次配对
+- 如果有 `agent.json` 且内容完整 → 不需要 link-code，直接用 token 重连
+- 如果有 `agent.json` 但报错 "Invalid agent token" → 凭证已失效，需要删除并重新配对
+- 如果无 `agent.json` → 需要用户提供 `link-code` 和 `secret` 进行首次配对
 
 ### 诊断第三步：检查日志错误信息
 
 ```bash
-# 查看最近的日志（根据使用的方案选择）
 # systemd
 journalctl --user -u evopaimo-connector -n 50 --no-pager 2>/dev/null || true
 
@@ -587,17 +430,44 @@ grep -E "error|Error|失败|断开|Invalid|expired|conflict" ~/evopaimo.log 2>/d
 
 **常见错误及含义**：
 
+| 错误信息 | 含义 | 解决方向 |
+|---|---|---|
+| `Invalid agent token` | `agent.json` 中的 token 已失效 | 删除 `agent.json`，重新配对 |
+| `Invalid link code` | `link-code` 错误或已过期 | 从客户端获取新的 `link-code` |
+| `Connection refused` | 服务器不可达 | 检查网络、DNS、防火墙 |
+| `Another client connected` | 有其他进程抢连接 | 回到诊断第一步 |
+| `Session expired` | 服务端 session 过期 | 删除 `agent.json`，重新配对 |
+| `[!] 找不到 'openclaw' 命令` | `openclaw` 不在 PATH | 看下方"找不到 openclaw 命令"小节 |
+| `CLI 调用失败: GatewayClientRequestError: pairing required` | OpenClaw 子进程争锁失败（多见于多进程并发） | 检查冲突进程；同一 `--label` 已被 connector 内部串行化 |
 
-| 错误信息                       | 含义                      | 解决方向               |
-| -------------------------- | ----------------------- | ------------------ |
-| "Invalid agent token"      | agent.json 中的 token 已失效 | 删除 agent.json，重新配对 |
-| "Invalid link code"        | link-code 错误或已过期        | 从客户端获取新的 link-code |
-| "Connection refused"       | 服务器不可达                  | 检查网络、DNS、防火墙       |
-| "Another client connected" | 有其他进程抢连接                | 回到诊断第一步            |
-| "Session expired"          | 服务端 session 过期          | 删除 agent.json，重新配对 |
+### 诊断第四步：检查 OpenClaw CLI 是否可用
 
+```bash
+# 一条命令看清当前状态
+python3 evopaimo-connect.py status
+```
 
-### 诊断第四步：网络连通性
+输出会包含：
+
+- relay 凭证状态（是否有 `~/.config/evopaimo/agent.json`）
+- OpenClaw CLI 路径（找不到时会用红字提示，且 exit code = 1）
+
+如果 status 报告找不到 `openclaw`：
+
+```bash
+# 查找 openclaw 实际位置
+find ~ -name "openclaw" -type f 2>/dev/null
+ls ~/.npm-global/bin/openclaw 2>/dev/null
+
+# 方法 1：添加到 PATH（永久）
+echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# 方法 2：在启动命令中指定 OPENCLAW_CLI 环境变量
+OPENCLAW_CLI=/home/user/.npm-global/bin/openclaw python3 -u evopaimo-connect.py ...
+```
+
+### 诊断第五步：网络连通性
 
 ```bash
 # 检查是否能访问 relay 服务器
@@ -613,25 +483,6 @@ echo $http_proxy $https_proxy $HTTP_PROXY $HTTPS_PROXY
 
 ---
 
-### 问题：找不到 openclaw 命令
-
-**症状**：日志显示 `[!] 找不到 openclaw 命令`
-
-**解决**：
-
-```bash
-# 查找 openclaw 实际位置
-find ~ -name "openclaw" -type f 2>/dev/null
-ls ~/.npm-global/bin/openclaw 2>/dev/null
-
-# 方法1：添加到 PATH（永久）
-echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-
-# 方法2：在启动命令中指定 OPENCLAW_CLI 环境变量
-OPENCLAW_CLI=/home/user/.npm-global/bin/openclaw python3 -u evopaimo-connect.py ...
-```
-
 ### 问题：缺少 Python 依赖
 
 **症状**：`ModuleNotFoundError: No module named 'websockets'`
@@ -646,67 +497,51 @@ pip3 install --user websockets requests
 
 **可能原因**：
 
-1. link-code 或 secret 错误（仅首次配对时）
-2. agent_token 已失效或被撤销
+1. `link-code` 或 `secret` 错误（仅首次配对时）
+2. `agent_token` 已失效或被撤销
 3. 网络问题
 4. 服务器端 session 已过期
 
 **解决**：
 
 ```bash
-# 检查日志中的具体错误
 tail -50 __WORKDIR__/evopaimo.log | grep -E "error|Error|失败|断开"
 
-# 检查是否已有 agent.json（如果有，会跳过 link-code 认证）
 cat ~/.config/evopaimo/agent.json 2>/dev/null || echo "无 agent.json，将使用 link-code 配对"
 
 # 如果 agent_token 失效，删除后用新的 link-code 重新配对
 rm -f ~/.config/evopaimo/agent.json
-# 然后获取新的 link-code 和 secret 重新启动
 ```
 
-### 问题：客户端重启后 Connector 无法连接
+### 问题：客户端重启后 connector 无法连接
 
-**症状**：客户端重启、重新登录后，Connector 报错 "Invalid agent token" 或类似错误
+**症状**：客户端重启、重新登录后，connector 报错 "Invalid agent token" 或类似错误
 
 **原因**：用户在客户端上点击了"断开 Connector"或手动解绑
 
 **解决**：
 
 ```bash
-# 删除旧的 agent.json
 rm -f ~/.config/evopaimo/agent.json
-
-# 从客户端获取新的 link-code 和 secret
-# 然后重启服务（或重新执行启动命令）
+# 从客户端获取新的 link-code 和 secret，然后重启服务
 systemctl --user restart evopaimo-connector  # 如果用 systemd
 ```
 
 ### 问题：需要更换绑定的客户端账号
 
-**场景**：想让 Connector 连接到另一个用户的客户端
-
-**解决**：
-
 ```bash
-# 1. 删除旧凭证
 rm -f ~/.config/evopaimo/agent.json
 
-# 2. 更新服务配置中的 link-code 和 secret（如果用 systemd）
+# 更新服务配置中的 link-code 和 secret（如果用 systemd）
 nano ~/.config/systemd/user/evopaimo-connector.service
-# 修改 --link-code 和 --secret 参数
 
-# 3. 重新加载并重启
 systemctl --user daemon-reload
 systemctl --user restart evopaimo-connector
 ```
 
 ### 问题：systemd 服务无法启动
 
-**检查**：
-
 ```bash
-# 查看详细错误
 systemctl --user status evopaimo-connector
 journalctl --user -u evopaimo-connector -n 50
 
@@ -730,8 +565,8 @@ journalctl --user -u evopaimo-connector -n 50
 - 不要对启动命令设置 `timeout` 参数
 - 不要依赖 `background: true` + `yieldMs` 来保持进程
 - 必须让进程脱离 AI session 的生命周期控制
-- 首次配对成功后会生成 `~/.config/evopaimo/agent.json`，后续重连不再需要 link-code
-- 客户端重启刷新 link-code 不会影响已配对的 Connector
+- 首次配对成功后会生成 `~/.config/evopaimo/agent.json`，后续重连不再需要 `link-code`
+- 客户端重启刷新 `link-code` 不会影响已配对的 connector
 
 ---
 
@@ -741,20 +576,20 @@ journalctl --user -u evopaimo-connector -n 50
 
 **Linux (Debian/Ubuntu/Fedora/Arch)**
 
-- systemd 用户服务：推荐，需要 systemctl + loginctl enable-linger
-- screen/tmux：备选，需要安装
+- systemd 用户服务：推荐，需要 `systemctl` + `loginctl enable-linger`
+- screen / tmux：备选，需要安装
 - nohup：兜底，所有发行版可用
 
 **macOS**
 
 - launchd：推荐，原生支持
-- screen/tmux：需要 brew install
+- screen / tmux：需要 `brew install`
 - nohup：兜底
 
 **Windows (WSL2)**
 
 - systemd：WSL2 默认启用 systemd，可用
-- screen/tmux：需要 apt install
+- screen / tmux：需要 `apt install`
 - nohup：可用
 
 **Windows (原生)**
@@ -763,36 +598,27 @@ journalctl --user -u evopaimo-connector -n 50
 
 **FreeBSD/OpenBSD**
 
-- screen/tmux：推荐
+- screen / tmux：推荐
 - nohup：可用
 - 无 systemd
 
-### OpenClaw 版本兼容性
+### OpenClaw 兼容性
 
-| OpenClaw 版本 | hooks 模式 | CLI 模式 | 推荐方式 |
-|---|---|---|---|
-| **26.x+** | ✅ 推荐 | ✅ | 跑 `evopaimo-connect setup` 启用 hooks |
-| **25.x** | ❌ 大概率不支持 hooks | ✅（注意 `--session-id` 在部分版本叫 `--label`） | 直接 CLI；如遇 `--session-id` 报错查看 `openclaw agent --help` |
-| **< 25.x** | ❌ | ⚠️ 不保证兼容 | 建议升级 |
-| **第三方托管 OpenClaw**（如 Kimi 服务化部署） | ⚠️ 看实现是否暴露 hooks | ⚠️ 看实现是否允许子进程 | 跑 `evopaimo-connect status` + `setup --verify` 实测 |
+connector 调用的接口是 `openclaw agent --session-id <label> --message <text>`：
 
-**hooks 模式额外要求**：
+- OpenClaw 26.x+：完全兼容
+- OpenClaw 25.x：注意 `--session-id` 在部分小版本叫 `--label`，如遇报错先查 `openclaw agent --help`
+- OpenClaw < 25.x：不保证兼容，建议升级
+- 第三方托管 OpenClaw（如 Kimi 服务化部署）：看实现是否允许子进程；不允许的话当前版本无法工作（等 Phase 2 channel plugin）
 
-- OpenClaw 进程在本机运行（hooks 端点默认 `http://127.0.0.1:18789`，不是远程地址）
-- OpenClaw 已写入 hooks 配置（`evopaimo-connect setup` 会通过 `openclaw config set` 自动写入）
-- 本机能从 connector 进程访问 `127.0.0.1:18789`（容器/沙箱场景注意 loopback 是否互通）
-
-**CLI 模式额外要求**：
-
-- `openclaw` 二进制在 PATH（或通过 `OPENCLAW_CLI` 环境变量指定绝对路径）
-- 进程能 fork 子进程（一些极简容器禁用 fork → 此时只能用 hooks 模式）
+OpenClaw CLI 必须能 fork 子进程——一些极简容器禁用 fork，会直接报 PermissionError。
 
 ### AI Agent 平台兼容性
 
 **OpenClaw TUI / Kimi Claw**
 
 - exec 工具支持 `background: true`，但进程会随 session 终止
-- 必须用 nohup/screen/systemd 脱离 session
+- 必须用 nohup / screen / systemd 脱离 session
 
 **Claude Code**
 
@@ -802,13 +628,13 @@ journalctl --user -u evopaimo-connector -n 50
 **Cursor / Windsurf**
 
 - 终端命令会随编辑器关闭终止
-- 必须用 systemd/launchd 持久化
+- 必须用 systemd / launchd 持久化
 
 ### 安全机制兼容性
 
 **OpenClaw 沙箱模式**
 
-- Connector 脚本只调用 `openclaw agent` CLI，不受沙箱限制
+- connector 脚本只调用 `openclaw agent` CLI，不受沙箱限制
 - 无需特殊配置
 
 **OpenClaw 审批模式**
@@ -819,7 +645,7 @@ journalctl --user -u evopaimo-connector -n 50
 **企业网络环境**
 
 - 需要允许 WebSocket 出站连接到 relay 服务器
-- 默认端口 443 (wss://)
+- 默认端口 443 (`wss://`)
 
 ### Python 版本兼容性
 
@@ -834,4 +660,3 @@ journalctl --user -u evopaimo-connector -n 50
 **Python 3.7 及以下**
 
 - 不兼容，asyncio API 差异太大
-
