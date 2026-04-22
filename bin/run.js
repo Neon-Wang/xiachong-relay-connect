@@ -4,7 +4,7 @@ const { execSync, spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
-const SCRIPT = path.join(__dirname, "..", "xiachong-connect.py");
+const SCRIPT = path.join(__dirname, "..", "evopaimo-connect.py");
 
 function checkPython() {
   for (const cmd of ["python3", "python"]) {
@@ -51,17 +51,17 @@ if (!checkDeps(python)) {
 const args = process.argv.slice(2);
 if (args.length === 0) {
   console.log(`
-  XiaChong Relay Connector
+  EvoPaimo Relay Connector
   ========================
 
   Usage:
-    npx xiachong-relay-connect \\
+    npx evopaimo-relay-connect \\
       --relay https://primo.evomap.ai \\
       --link-code LINK_CODE \\
       --secret SECRET
 
   Example (echo mode):
-    npx xiachong-relay-connect --relay https://primo.evomap.ai --link-code A7X9K2 --secret f3a8b1c2...
+    npx evopaimo-relay-connect --relay https://primo.evomap.ai --link-code A7X9K2 --secret f3a8b1c2...
 `);
   process.exit(0);
 }

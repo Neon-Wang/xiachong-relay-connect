@@ -1,10 +1,13 @@
-# xiachong-relay-connect
+# evopaimo-relay-connect
 
-> XiaChong 桌面宠物项目的中继连接器 — 在 OpenClaw 所在机器上运行，将 AI 回复安全地转发给远程桌面客户端。
+> EvoPaimo 桌面宠物项目的中继连接器 — 在 OpenClaw 所在机器上运行，将 AI 回复安全地转发给远程桌面客户端。
+>
+> npm 包名：`evopaimo-relay-connect`（旧版 `xiachong-relay-connect@1.1.x` 已 deprecate）
+> GitHub 仓库名沿用 `Neon-Wang/xiachong-relay-connect`（重命名仓库会破坏已存在的 git remote）
 
 ## 这个脚本做了什么
 
-`xiachong-connect.py` 是一个**纯文本聊天消息转发器**。它的完整工作流程如下：
+`evopaimo-connect.py` 是一个**纯文本聊天消息转发器**。它的完整工作流程如下：
 
 1. 通过 WebSocket 连接到用户自部署的中转服务器（Cloudflare Workers）
 2. 从中转服务器接收桌面客户端发来的纯文本聊天消息
@@ -55,7 +58,7 @@ git clone https://github.com/Neon-Wang/xiachong-relay-connect.git
 cd xiachong-relay-connect
 pip install -r requirements.txt
 
-python3 -u xiachong-connect.py \
+python3 -u evopaimo-connect.py \
   --relay https://primo.evomap.ai \
   --link-code 你的LINK_CODE \
   --secret 你的SECRET
@@ -80,15 +83,15 @@ python3 -u xiachong-connect.py \
 ## 工作原理
 
 ```
-XiaChong 客户端  ←→  中转服务器 (CF Workers)  ←→  xiachong-connect.py  →  openclaw CLI  →  AI
+EvoPaimo 客户端  ←→  中转服务器 (CF Workers)  ←→  evopaimo-connect.py  →  openclaw CLI  →  AI
 ```
 
-1. 用 XiaChong 客户端给的 Link Code + Secret 绑定到中转服务器
+1. 用 EvoPaimo 客户端给的 Link Code + Secret 绑定到中转服务器
 2. 建立 WebSocket 长连接到中转服务器，等待客户端消息
 3. 收到消息后，用 `EMOTION_PROMPT` 包装用户消息，要求 AI 输出 `{emotion, full_text, tts_text}` 格式的 JSON
 4. 调用 `openclaw agent --session-id "mobile-app" --message "包装后的消息"` 发送给 AI
 5. 解析 AI 回复：`strip_thinking()` 去除思考过程 → `parse_reply()` 提取 emotion / full_text / tts_text
-6. 将结构化回复推回中转服务器，转发给 XiaChong 客户端
+6. 将结构化回复推回中转服务器，转发给 EvoPaimo 客户端
 
 找不到 `openclaw` 命令时自动降级为 Echo 模式（原样返回消息），适合测试中继链路。
 
@@ -110,10 +113,10 @@ XiaChong 客户端  ←→  中转服务器 (CF Workers)  ←→  xiachong-conne
 
 ```bash
 # 1. 下载脚本（已有则跳过）
-curl -sO https://primo.evomap.ai/connector/xiachong-connect.py
+curl -sO https://primo.evomap.ai/connector/evopaimo-connect.py
 
-# 2. 审查后启动（文件头有 "XiaChong Relay Connector" 标识）
-OPENCLAW_CLI="openclaw" python3 -u xiachong-connect.py \
+# 2. 审查后启动（文件头有 "EvoPaimo Relay Connector" 标识）
+OPENCLAW_CLI="openclaw" python3 -u evopaimo-connect.py \
   --relay <服务器地址> --link-code <LINK_CODE> --secret <SECRET>
 ```
 
@@ -133,7 +136,7 @@ OPENCLAW_CLI="openclaw" python3 -u xiachong-connect.py \
 简单后台运行（终端关闭后仍运行）：
 
 ```bash
-nohup python3 -u xiachong-connect.py \
+nohup python3 -u evopaimo-connect.py \
   --relay https://primo.evomap.ai \
   --link-code XXXXXX \
   --secret xxxxxxxx \
@@ -150,17 +153,19 @@ nohup python3 -u xiachong-connect.py \
 
 Connector 支持**双模式认证**：
 
-1. **首次配对**：使用客户端提供的 `link_code` + `secret` 完成绑定，生成 `agent_token` 保存到 `~/.config/xiachong/agent.json`
+1. **首次配对**：使用客户端提供的 `link_code` + `secret` 完成绑定，生成 `agent_token` 保存到 `~/.config/evopaimo/agent.json`
 2. **后续重连**：自动使用 `agent_token` 认证，**不再需要 link_code**
 
 这意味着：
 - 命令行参数 `--link-code` 和 `--secret` 只在首次配对时使用
 - 客户端重启刷新 link_code 不影响已配对的 Connector
-- 如需重新配对，删除 `~/.config/xiachong/agent.json` 后重启
+- 如需重新配对，删除 `~/.config/evopaimo/agent.json` 后重启
 
-## 与 XiaChong 项目的关系
+## 与 EvoPaimo 项目的关系
 
-本目录是 [XiaChong monorepo](https://github.com/Neon-Wang/openclawToLocal) 的子项目，推送到 main 分支时自动同步到 [Neon-Wang/xiachong-relay-connect](https://github.com/Neon-Wang/xiachong-relay-connect)。npm 包 `xiachong-relay-connect` 通过 CI Trusted Publishing 自动发布。
+本目录是 [EvoPaimo monorepo](https://github.com/Neon-Wang/openclawToLocal) 的子项目，推送到 main 分支时自动同步到 [Neon-Wang/xiachong-relay-connect](https://github.com/Neon-Wang/xiachong-relay-connect)。npm 包 `evopaimo-relay-connect` 通过 CI Trusted Publishing 自动发布。
+
+> **历史名说明**：GitHub 仓库名 `xiachong-relay-connect` 是历史代号，重命名会破坏所有已有的 git remote / fork，因此保留。npm 包从 1.2.0 起改名为 `evopaimo-relay-connect`，旧 `xiachong-relay-connect@1.1.x` 已 deprecate。
 
 ## 相关文档
 

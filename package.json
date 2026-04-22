@@ -1,9 +1,9 @@
 {
-  "name": "xiachong-relay-connect",
-  "version": "1.1.0",
-  "description": "Connect your OpenClaw/KimiClaw to the XiaChong relay server",
+  "name": "evopaimo-relay-connect",
+  "version": "1.2.0",
+  "description": "Connect your OpenClaw/KimiClaw to the EvoPaimo relay server",
   "bin": {
-    "xiachong-relay-connect": "bin/run.js"
+    "evopaimo-relay-connect": "bin/run.js"
   },
   "scripts": {
     "start": "node bin/run.js"
@@ -11,6 +11,7 @@
   "keywords": [
     "openclaw",
     "kimiclaw",
+    "evopaimo",
     "relay",
     "connector"
   ],
@@ -24,7 +25,7 @@
   },
   "files": [
     "bin/",
-    "xiachong-connect.py",
+    "evopaimo-connect.py",
     "requirements.txt",
     "README.md"
   ]
