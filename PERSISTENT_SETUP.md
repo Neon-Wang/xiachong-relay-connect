@@ -8,18 +8,67 @@
 >
 > **正确的诊断顺序**：
 >
+> 0. **检查 connector 当前用的是 hooks 还是 CLI 模式**（`evopaimo-connect status`）
 > 1. 检查冲突进程（systemd 服务、screen、旧进程）← 80% 的问题在这里
 > 2. 检查凭证状态（agent.json 是否存在/有效）
 > 3. 检查日志错误信息
 > 4. 检查网络连通性
 >
 > 直接跳到"重新配对"而不先排查冲突进程 = 浪费时间。
+>
+> **如果用户首次部署**：建议先引导跑 `evopaimo-connect setup` 启用 hooks 模式（更稳定、协议更合法），然后再走持久化部署流程。详见 [connector/README.md 的"启动模式与 fallback 逻辑"](../README.md#启动模式与-fallback-逻辑)。
 
 ---
 
 本文档供 AI Agent（OpenClaw/Kimi Claw 等）参考，用于在用户机器上稳定运行 EvoPaimo Relay Connector。
 
 **核心问题**：Connector 是长期运行的 WebSocket 守护进程，不能用 `timeout` 或短 `yieldMs` 启动，否则会在 AI session 结束时被终止。
+
+---
+
+## OpenClaw 通信模式（重要，先看）
+
+connector 1.3+ 支持两种与 OpenClaw 通信的模式，启动时会自动探测：
+
+| 模式 | 协议 | OpenClaw 要求 | 启用方式 |
+|---|---|---|---|
+| **hooks**（推荐） | HTTP `POST /hooks/agent` | OpenClaw 26.x+ 且本机已配置好 hooks 端点 | 跑一次 `evopaimo-connect setup` |
+| **CLI**（兜底） | `openclaw agent --message …` 子进程 | 任意 OpenClaw 版本，PATH 中能找到 `openclaw` | 默认可用，无需额外配置 |
+
+**自动决策规则**（由 connector 启动时的 `detect_transport` 函数决定）：
+
+1. 如果 `~/.config/evopaimo/openclaw-hooks.json` 存在 + hooks 健康检查通过 → 用 hooks 模式
+2. 否则 → 用 CLI 模式（前提是 PATH 中有 `openclaw`）
+3. 运行时 hooks 连续 3 次失败（或单次 401/AuthError）→ 自动单向降级到 CLI 模式
+
+**何时引导用户启用 hooks 模式**：
+
+- 用户首次部署 connector → 直接引导跑 setup，从一开始就用 hooks（更稳定）
+- 用户报告"OpenClaw 子进程偶发卡死"或"高并发下卡顿" → 切到 hooks 模式（不用反复 fork 子进程）
+- 用户机器上 OpenClaw 版本 ≥ 26.x → 优先 hooks
+- 用户机器上 OpenClaw 版本 < 26.x、或 OpenClaw 由第三方托管禁用了 hooks → 不要尝试 hooks，直接走 CLI 模式
+
+**启用 hooks 模式的命令**：
+
+```bash
+# 一次性配置（需要本机 OpenClaw CLI 可用）
+evopaimo-connect setup
+
+# 验证 hooks 是否能联通
+evopaimo-connect setup --verify
+
+# 查看当前会用哪个模式
+evopaimo-connect status
+
+# 撤销 hooks 配置（回退到纯 CLI 模式）
+evopaimo-connect setup --rollback
+```
+
+**详细资料**：
+
+- [connector/README.md](README.md) — 端到端使用文档（推荐先看）
+- [docs/specs/openclaw-hooks-integration/spec-1-hooks-transport.md](../docs/specs/openclaw-hooks-integration/spec-1-hooks-transport.md) — 设计文档（spec-1）
+- [docs/specs/openclaw-hooks-integration/background-openclaw-architecture.md](../docs/specs/openclaw-hooks-integration/background-openclaw-architecture.md) — OpenClaw 架构背景
 
 ---
 
@@ -404,6 +453,54 @@ grep -E "已连接|connected|等待客户端" __WORKDIR__/evopaimo.log | tail -5
 
 > **重要**：本章节是**强制阅读**内容。在用户报告连接问题时，必须按顺序执行以下诊断步骤，不要跳过任何一步。
 
+### 诊断第零步：检查 connector 当前用的是 hooks 还是 CLI 模式
+
+**为什么先做这步**：connector 1.3+ 的故障表现会因模式不同而差异巨大：
+
+- hooks 模式问题 → 看 OpenClaw HTTP 端点 + token；CLI 子进程相关排查无效
+- CLI 模式问题 → 看 `openclaw` 命令路径、子进程是否卡死；hooks 端点状态无关
+
+```bash
+# 一条命令看清当前状态
+evopaimo-connect status
+```
+
+输出会包含：
+
+- relay 凭证状态（是否有 `~/.config/evopaimo/agent.json`）
+- hooks 配置状态（是否有 `~/.config/evopaimo/openclaw-hooks.json` + 端点是否 alive）
+- CLI 可用性（openclaw 是否在 PATH）
+- 决策结果："默认会使用 X 模式"
+
+**根据 status 结果选择后续诊断方向**：
+
+| status 显示 | 含义 | 后续诊断重点 |
+|---|---|---|
+| `默认模式：hooks (健康)` | 当前用 hooks | 走下方"hooks 模式诊断分支" |
+| `默认模式：cli (hooks 不可用)` | hooks 配过但端点连不上 | 同时排查 hooks 端点 + 进程冲突 |
+| `默认模式：cli (无 hooks 配置)` | 从未启用 hooks | 走传统 CLI 诊断（第一步 → 第四步） |
+| `默认模式：无 (hooks 和 cli 都不可用)` | 致命，OpenClaw 完全不可达 | 先装/启动 OpenClaw |
+
+**hooks 模式诊断分支**：
+
+```bash
+# 1. 检查 openclaw-hooks.json 是否存在
+cat ~/.config/evopaimo/openclaw-hooks.json 2>/dev/null || echo "无 hooks 配置"
+
+# 2. 验证端点是否还连得上 + token 有效
+evopaimo-connect setup --verify
+
+# 3. 如果 verify 失败但确认 OpenClaw 还在运行
+#    很可能是 OpenClaw 端 hooks 配置被改 / token 改了
+#    重新跑一次 setup 重置 token
+evopaimo-connect setup
+
+# 4. 如果用户明确不想用 hooks，回退到纯 CLI 模式
+evopaimo-connect setup --rollback
+```
+
+**hooks → CLI 自动降级**：connector 运行时 hooks 连续 3 次失败（或单次 401/AuthError）会自动降级到 CLI 模式，本次进程不再回切（避免来回抖动）。下次启动时会重新探测。日志里会出现 `[!] Hooks 模式失败 N 次，自动降级到 CLI` 类似字样。
+
 ### 诊断第一步：检查是否有冲突进程（最常见原因！）
 
 **这是最容易被忽略但最常见的问题**：用户机器上可能有多个 Connector 实例在竞争连接。
@@ -667,19 +764,23 @@ journalctl --user -u evopaimo-connector -n 50
 
 ### OpenClaw 版本兼容性
 
-**OpenClaw 26.x+**
+| OpenClaw 版本 | hooks 模式 | CLI 模式 | 推荐方式 |
+|---|---|---|---|
+| **26.x+** | ✅ 推荐 | ✅ | 跑 `evopaimo-connect setup` 启用 hooks |
+| **25.x** | ❌ 大概率不支持 hooks | ✅（注意 `--session-id` 在部分版本叫 `--label`） | 直接 CLI；如遇 `--session-id` 报错查看 `openclaw agent --help` |
+| **< 25.x** | ❌ | ⚠️ 不保证兼容 | 建议升级 |
+| **第三方托管 OpenClaw**（如 Kimi 服务化部署） | ⚠️ 看实现是否暴露 hooks | ⚠️ 看实现是否允许子进程 | 跑 `evopaimo-connect status` + `setup --verify` 实测 |
 
-- 完全兼容
-- CLI 命令：`openclaw agent --session-id <label> --message <text>`
+**hooks 模式额外要求**：
 
-**OpenClaw 25.x**
+- OpenClaw 进程在本机运行（hooks 端点默认 `http://127.0.0.1:18789`，不是远程地址）
+- OpenClaw 已写入 hooks 配置（`evopaimo-connect setup` 会通过 `openclaw config set` 自动写入）
+- 本机能从 connector 进程访问 `127.0.0.1:18789`（容器/沙箱场景注意 loopback 是否互通）
 
-- 兼容，但 `--session-id` 可能需要改为 `--label`
-- 如遇问题，检查 `openclaw agent --help`
+**CLI 模式额外要求**：
 
-**OpenClaw < 25.x**
-
-- 不保证兼容，建议升级
+- `openclaw` 二进制在 PATH（或通过 `OPENCLAW_CLI` 环境变量指定绝对路径）
+- 进程能 fork 子进程（一些极简容器禁用 fork → 此时只能用 hooks 模式）
 
 ### AI Agent 平台兼容性
 
