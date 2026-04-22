@@ -1,8 +1,10 @@
-# Connector 发版流程（交接版）
+# Connector 发版流程（长期维护手册）
 
-> **谁该读这份文档**：拥有 npm 账号、负责发布 `evopaimo-relay-connect` 包的维护者
-> **何时读**：交接 npm 账号后第一次发版前；或者发版失败需要排查时
-> **不需要读**：只是改 connector 代码、不负责发版的开发者（你只需要照常 commit + push 到 `main`，CI 会按本流程自动跑）
+> **谁该读这份文档**：长期维护 connector 发版的 maintainer（熟悉仓库、写代码、bump 版本的那个人）
+> **何时读**：接手 maintainer 职责时；发版失败需要排查时；处理 prerelease / 回滚等非日常场景时
+> **不需要读**：
+> - 只是改 connector 代码、不负责发版的开发者（照常 commit + push 到 `main`，CI 会自动跑第三节的流程）
+> - 一次性给我们发首次 npm publish 的同事 → 请直接读 [`NPM_ONBOARDING.md`](NPM_ONBOARDING.md)（10 分钟读完，做完就交还给我们）
 
 ---
 
@@ -40,7 +42,7 @@
 | GitHub 仓库管理员（已是 Neon Wang） | 在 npmjs.com 把 GitHub repo 配成 Trusted Publisher | 一次性 |
 | 后续发版人（任何 push 到 main 的人） | 只要有 monorepo write 权限就行，不需要 npm 凭据 | 持续 |
 
-> npm Trusted Publishing 解释：CI 用 GitHub OIDC token 向 npm 证明"我是 `Neon-Wang/xiachong` 仓库的 `publish-connectors.yml` workflow"，npm 信任这条来源就允许它 publish。**不需要在 CI 里存 npm token**，泄露面更小。详见[官方文档](https://docs.npmjs.com/trusted-publishers)。
+> npm Trusted Publishing 解释：CI 用 GitHub OIDC token 向 npm 证明"我是 `EvoMap/XiaChong` 仓库的 `publish-connectors.yml` workflow"，npm 信任这条来源就允许它 publish。**不需要在 CI 里存 npm token**，泄露面更小。详见[官方文档](https://docs.npmjs.com/trusted-publishers)。
 
 ---
 
@@ -65,8 +67,8 @@ npm whoami
 
 ```bash
 # 1) 克隆 monorepo
-git clone https://github.com/Neon-Wang/xiachong.git
-cd xiachong
+git clone https://github.com/EvoMap/XiaChong.git
+cd XiaChong
 
 # 2) 切到要发版的 commit（一般是 main HEAD）
 git checkout main
@@ -133,8 +135,8 @@ npm view evopaimo-relay-connect dist-tags
 
 | 字段 | 值 |
 |---|---|
-| Organization or user | `Neon-Wang` |
-| Repository | `xiachong` |
+| Organization or user | `EvoMap` |
+| Repository | `XiaChong` |
 | Workflow filename | `publish-connectors.yml` |
 | Environment | （留空）|
 
@@ -144,7 +146,7 @@ npm view evopaimo-relay-connect dist-tags
 
 可以**不**急着发新版本，直接用 `workflow_dispatch` 手动触发一次 CI 跑空（因为 package.json 版本号没变化，CI 会跑到 publish 步骤但跳过 `npm publish`，正好验证 Trusted Publisher 是否配对了）：
 
-1. 浏览器打开 `https://github.com/Neon-Wang/xiachong/actions/workflows/publish-connectors.yml`
+1. 浏览器打开 `https://github.com/EvoMap/XiaChong/actions/workflows/publish-connectors.yml`
 2. 点右上角 `Run workflow` → `Run workflow`
 3. 等约 1-2 分钟看结果
 4. 进入这次运行的日志，"Publish connector to npm" 步骤应该输出：
@@ -204,7 +206,7 @@ git push origin main
 
 ```bash
 gh run watch  # 等当前最新 run 跑完
-# 或浏览器打开 https://github.com/Neon-Wang/xiachong/actions/workflows/publish-connectors.yml
+# 或浏览器打开 https://github.com/EvoMap/XiaChong/actions/workflows/publish-connectors.yml
 ```
 
 CI 流程（约 2-3 分钟）：
@@ -355,7 +357,7 @@ gh run view <RUN_ID> --log-failed
 | 错误信息（从 CI 日志拷贝） | 含义 | 解决方向 |
 |---|---|---|
 | `404 Not Found - PUT https://registry.npmjs.org/evopaimo-relay-connect` | 包不存在 + Trusted Publisher 没法创建包 | **回到《二、首次发布》**——同事必须先本地手动发一次 |
-| `403 Forbidden - PUT ...` | 包存在但 Trusted Publisher 配错了 | npmjs.com 上检查 Trusted Publisher 的 `Workflow filename` 是不是 `publish-connectors.yml`、`Repository` 是不是 `Neon-Wang/xiachong` |
+| `403 Forbidden - PUT ...` | 包存在但 Trusted Publisher 配错了 | npmjs.com 上检查 Trusted Publisher 的 `Workflow filename` 是不是 `publish-connectors.yml`、`Repository` 是不是 `EvoMap/XiaChong` |
 | `EOTP Need otp` 或 `OTP required` | 本地 publish 时 2FA 没输 | 重跑命令并输入 2FA OTP |
 | `409 Conflict - cannot publish over previously published version` | 当前 package.json 版本号已经在 npm 上了 | bump 一个新版本号再 push（npm 不允许覆盖已发版本） |
 | `EPUBLISHCONFLICT` | 同上 | 同上 |
@@ -414,7 +416,7 @@ npm unpublish evopaimo-relay-connect@1.4.0    # 强烈不推荐
 如果你完全不熟悉 npm Trusted Publishing：
 
 1. **传统方式**：在 GitHub Secrets 里存 `NPM_TOKEN`，CI 用这个 token 调 `npm publish`。问题：token 泄露 = 任何人能以你的身份发包。
-2. **Trusted Publishing**：CI runner 向 GitHub OIDC provider 请求一个**短期 JWT**（每次 run 重新签发），里面带 claims `repository=Neon-Wang/xiachong`、`workflow=publish-connectors.yml`。npm registry 收到这个 JWT 后核对自己配置的 trusted publisher 列表，匹配上就允许 publish。
+2. **Trusted Publishing**：CI runner 向 GitHub OIDC provider 请求一个**短期 JWT**（每次 run 重新签发），里面带 claims `repository=EvoMap/XiaChong`、`workflow=publish-connectors.yml`。npm registry 收到这个 JWT 后核对自己配置的 trusted publisher 列表，匹配上就允许 publish。
 3. **优势**：仓库里不需要存任何 npm 凭据；token 短期 + 不可重放；只有指定 workflow 文件能 publish（其他 workflow 拿不到）。
 
 详见 [npm Trusted Publishers 官方文档](https://docs.npmjs.com/trusted-publishers)。
