@@ -1,22 +1,27 @@
 # EvoPaimo Connector 持久化部署 Skill
 
+> # ⚠️ 关于本文档"OpenClaw 通信模式 / hooks 模式"描述的紧急更正
+>
+> 本文档下方关于"hooks 模式 (POST 127.0.0.1:18789/hooks/agent) 优先 / CLI fallback"和 `evopaimo-connect setup` 子命令的所有描述**基于错误前提**——OpenClaw 在 18789 端口运行的是 Web Control UI，不是 hook server。详见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)。
+>
+> **当前唯一可工作的模式是 CLI 模式**——connector 通过 `subprocess` 调用 `openclaw agent --message <text>`。诊断时**忽略**下方文档里"诊断第零步：检查 hooks/CLI 模式"和"hooks 兼容矩阵"等内容，直接从"诊断第一步：检查冲突进程"开始。
+>
+> ---
+
 > **AI Agent 必读警告**
 >
 > 当用户报告 Connector 连接失败时，你**必须**按照本文档"常见问题排查"章节的顺序执行诊断，**不得跳过任何步骤**。
 >
 > **最常见的错误**：只检查配置文件格式、只看报错信息，而忽略"是否有其他进程在竞争连接"。这会导致你在表面问题上浪费大量时间。
 >
-> **正确的诊断顺序**：
+> **正确的诊断顺序**（已根据 POSTMORTEM 修订）：
 >
-> 0. **检查 connector 当前用的是 hooks 还是 CLI 模式**（`evopaimo-connect status`）
 > 1. 检查冲突进程（systemd 服务、screen、旧进程）← 80% 的问题在这里
 > 2. 检查凭证状态（agent.json 是否存在/有效）
 > 3. 检查日志错误信息
 > 4. 检查网络连通性
 >
 > 直接跳到"重新配对"而不先排查冲突进程 = 浪费时间。
->
-> **如果用户首次部署**：建议先引导跑 `evopaimo-connect setup` 启用 hooks 模式（更稳定、协议更合法），然后再走持久化部署流程。详见 [connector/README.md 的"启动模式与 fallback 逻辑"](../README.md#启动模式与-fallback-逻辑)。
 
 ---
 

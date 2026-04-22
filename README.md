@@ -1,8 +1,20 @@
 # evopaimo-relay-connect
 
+> # ⚠️ 关于本 README 中"hooks 模式（首选）"描述的紧急更正
+>
+> 本文档下方关于 connector 支持 "hooks 模式 (POST 127.0.0.1:18789/hooks/agent)" 的所有描述**基于错误前提**——OpenClaw 在 18789 端口运行的是 Web Control UI，不是 hook server；OpenClaw 的 "hooks" 概念是本地 fork+exec 的 lifecycle 脚本，不是 HTTP server。详细分析见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)。
+>
+> **当前可用模式只有 CLI 模式**——通过 `subprocess` 调用 `openclaw agent --message`（这是 OpenClaw 真实支持的 RPC 路径，旧 `xiachong-connect.py` 一直在用，生产环境工作正常）。
+>
+> **不要用 connector 当前的 hooks 集成代码**：HooksTransport / TransportSupervisor / detect_transport / setup 子命令在 connector 启动时会尝试探测一个不存在的 endpoint 然后 fallback 到 CLI——会浪费 startup 时间但不会破坏功能（CLI fallback 是真实可工作的）。
+>
+> 用户基于 POSTMORTEM 决策后会做代码清理（hooks 相关代码删除 / 留作 OpenAI HTTP API 重写 / 大跳跃到 channel plugin 三选一）。
+
+---
+
 > EvoPaimo 桌面宠物项目的中继连接器 — 在 OpenClaw 所在机器上运行，将 AI 回复安全地转发给远程桌面客户端。
 >
-> npm 包名：`evopaimo-relay-connect`
+> npm 包名：`evopaimo-relay-connect`（**截至 2026-04-22 尚未在 npm 注册成功**——见 [`RELEASE.md`](./RELEASE.md)）
 > GitHub 镜像仓库：`Neon-Wang/xiachong-relay-connect`（仓库名沿用旧名，因为重命名会破坏已存在的 git remote）
 >
 > **维护者：要发版/排查 CI publish 失败，请直接读 [`RELEASE.md`](./RELEASE.md)。**
