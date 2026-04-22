@@ -245,7 +245,40 @@ pytest tests/ -v
 |---|---|
 | `test_parse_reply.py` | `parse_reply` / `strip_thinking` / `_truncate` 输出契约（防止改造破坏老消息格式） |
 
-集成测试（需要本地装 OpenClaw + 一台 VM）的手动 checklist 见 [PERSISTENT_SETUP.md](./PERSISTENT_SETUP.md) 末尾的诊断流程。
+### 仿客户端 E2E 测试（无需真实客户端 APP）
+
+`connector/scripts/e2e-test-client.py` 扮演 EvoPaimo 客户端，自动 register + 连 `/ws/client` + 发消息 + 收 reply，可独立于真实客户端验证整条链路。
+
+```bash
+# 1) 本地 register 拿凭证
+connector/.venv/bin/python3.14 connector/scripts/e2e-test-client.py \
+  --relay https://primo.evomap.ai register
+# 输出里会有 link_code / secret / client_token
+
+# 2) 在 VM（或本地）启动新 connector，带上面输出的 link_code + secret
+# （见 evopaimo-relay.service 模板或 nohup 直接启动）
+
+# 3) 发一条测试消息
+connector/.venv/bin/python3.14 connector/scripts/e2e-test-client.py \
+  --relay https://primo.evomap.ai \
+  --reuse <LINK_CODE> <SECRET> <CLIENT_TOKEN> \
+  --message "ping test" \
+  --idle-timeout 60
+# reply_seen=True 表示链路完整
+```
+
+这个脚本就是 2026-04-22 v1.3.0 VM 端到端验证用的原件，实测结果见 [docs/connector-handover.md](../docs/connector-handover.md) 第二节。
+
+### systemd 用户服务模板
+
+`connector/scripts/evopaimo-relay.service` 是生产环境部署参考。使用方式：
+
+```bash
+cp connector/scripts/evopaimo-relay.service ~/.config/systemd/user/
+# 根据自己的 link_code / secret / agent-file 路径修改 ExecStart
+systemctl --user daemon-reload
+systemctl --user enable --now evopaimo-relay.service
+```
 
 ---
 
@@ -253,7 +286,7 @@ pytest tests/ -v
 
 本目录是 [EvoPaimo monorepo](https://github.com/Neon-Wang/openclawToLocal) 的子项目，推送到 main 分支时自动同步到 [Neon-Wang/xiachong-relay-connect](https://github.com/Neon-Wang/xiachong-relay-connect)。npm 包 `evopaimo-relay-connect` 通过 CI Trusted Publishing 自动发布。
 
-> **历史名说明**：GitHub 仓库名 `xiachong-relay-connect` 是历史代号，重命名会破坏所有已有的 git remote / fork，因此保留。npm 包从 1.2.0 起改名为 `evopaimo-relay-connect`，旧 `xiachong-relay-connect@1.1.x` 已 deprecate。
+> **历史名说明**：GitHub 仓库名 `xiachong-relay-connect` 是历史代号，重命名会破坏所有已有的 git remote / fork，因此保留。npm 包名统一为 `evopaimo-relay-connect`，自 v1.3.0 起首次发布（1.2.0 因架构撤回从未 publish，详见 [RELEASE.md](./RELEASE.md) 第一节和 [POSTMORTEM](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)）。
 
 ---
 
@@ -261,6 +294,8 @@ pytest tests/ -v
 
 - [Workers 后端](../workers/README.md)
 - [客户端](../client/README.md)
+- [**交接文档（T1 发版 / T2 VM 切换 / T3 LLM 连通）**](../docs/connector-handover.md) ← v1.3.0 上线前必读
 - [发版手册（npm 首发与排错）](./RELEASE.md)
 - [持久化部署 + AI Agent 调试 SOP](./PERSISTENT_SETUP.md)
 - [Phase 2 路线图：channel plugin](../docs/specs/openclaw-hooks-integration/phase-2-roadmap.md)
+- [Phase 1 撤回事故复盘](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)

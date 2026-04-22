@@ -1,0 +1,16 @@
+[Unit]
+Description=EvoPaimo Relay Connector
+Documentation=https://github.com/Neon-Wang/xiachong-relay-connect
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.openclaw/workspace
+Environment="OPENCLAW_CLI=/home/parallels/.npm-global/bin/openclaw"
+Environment="OPENCLAW_SESSION_LABEL=xc-relay"
+ExecStart=/usr/bin/python3 -u %h/.openclaw/workspace/evopaimo-connect.py --relay https://primo.evomap.ai --link-code ZLUR41 --secret d784791efb17ee491491fcd8238a1d51c612e1ac279e1b30eb95a02d9e321d10 --label xc-relay --agent-file %h/.config/evopaimo/agent.json
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

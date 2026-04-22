@@ -23,9 +23,10 @@
 | 旧 npm 包 `xiachong-relay-connect` | ❌ **也不存在**（README 里写的"已 deprecate"是基于错误假设，实际从未发布过） |
 | GitHub 镜像 `Neon-Wang/xiachong-relay-connect` | ✅ 存在且已 sync 到 hooks 集成代码（CI 的 sync 步骤是成功的，只有 npm publish 步骤失败） |
 | Cloudflare R2 上的 `evopaimo-connect.py` | ✅ 已上传（CI 的 R2 步骤也是成功的）— 这意味着 `https://primo.evomap.ai/connector/evopaimo-connect.py` 一直能拉到最新脚本 |
-| `connector/package.json` 版本号 | `1.2.0` |
-| Phase 1 hooks 集成代码 | ✅ 已在 `origin/main`（commit `f0cc563`） |
-| 上次 CI 运行 | failure（[run 24759763352](https://github.com/Neon-Wang/xiachong/actions/runs/24759763352)）— "404 Not Found - PUT /evopaimo-relay-connect" |
+| `connector/package.json` 版本号 | `1.3.0`（1.2.0 从未上过 npm） |
+| Phase 1 hooks 集成代码 | ⛔ 已撤除（2026-04-22，commit `b42ddff`）——原因见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md) |
+| 当前唯一 transport | CLI 模式（subprocess `openclaw agent --message`），无 fallback 层 |
+| 上次 CI 运行 | 首次 publish 一直 404（包不存在）；sync + R2 上传步骤一直成功。完整历史见 `gh run list --workflow=publish-connectors.yml` |
 
 **也就是说**：当前用户跑 `npx evopaimo-relay-connect ...` 会拿到"找不到包"的错误。所有依赖 npm 安装路径的文档（`docs/openclaw-integration.md`、`PERSISTENT_SETUP.md` 等）暂时**只对从 git 主干直接跑 Python 脚本的用户有效**。
 
@@ -227,7 +228,7 @@ curl -sI https://primo.evomap.ai/connector/evopaimo-connect.py | grep -i last-mo
 
 # 4) npx 能装并跑
 npx --yes evopaimo-relay-connect@latest --help
-# 应输出 connector 的 help 文案，包含 setup / status 子命令（如果 1.3.0+）
+# 应输出 connector 的 help 文案（relay/link-code/secret 等主参数 + status 子命令）
 ```
 
 ### 3.6 通知 + 文档同步
@@ -397,7 +398,9 @@ npm unpublish evopaimo-relay-connect@1.4.0    # 强烈不推荐
 |---|---|
 | `connector/package.json` | npm 包元数据；改 `version` 字段触发发版 |
 | `connector/bin/run.js` | npm 包的 `bin` 入口（`npx evopaimo-relay-connect` 跑这个 Node 脚本，它再 spawn Python 主脚本） |
-| `connector/evopaimo-connect.py` | Python 主脚本（hooks transport + CLI fallback + setup/status 子命令） |
+| `connector/evopaimo-connect.py` | Python 主脚本（CLI 模式调 `openclaw agent --message`，含 echo fallback、`status` 子命令） |
+| `connector/scripts/e2e-test-client.py` | 仿客户端 E2E 测试脚本（register → ws/client → 发消息 → 收 reply） |
+| `connector/scripts/evopaimo-relay.service` | systemd user unit 模板，用户部署时复制到 `~/.config/systemd/user/` |
 | `connector/requirements.txt` | Python 依赖（`bin/run.js` 启动时会自动 `pip install`） |
 | `connector/README.md` | npm 包的 README（同时也作为 GitHub `Neon-Wang/xiachong-relay-connect` 的 README，因为 sync 步骤直接 rsync 整个 connector 目录过去） |
 | `.github/workflows/publish-connectors.yml` | 发版 CI workflow |
@@ -420,8 +423,9 @@ npm unpublish evopaimo-relay-connect@1.4.0    # 强烈不推荐
 
 ## 八、Known Issues（写入文档让交接同事知道，但不阻塞发版）
 
-1. **`bin/run.js` help 文案过时**：第 53-66 行的 `--help` 输出只列出了 `--relay --link-code --secret`，没有提 `setup` / `status` 子命令。不影响功能（参数会正确转发给 Python），但用户跑 `npx evopaimo-relay-connect` 不带参数时看不到子命令提示。
+1. **`bin/run.js` help 文案**：第 53-66 行只列出了 `--relay --link-code --secret`，没有提 `status` 子命令。不影响功能（参数会正确转发给 Python），只是 `npx evopaimo-relay-connect` 不带参数时看不到 `status` 子命令提示。
 2. **README 关于"deprecate xiachong-relay-connect@1.1.x"的说明是虚构的**——见第六节末尾说明。
 3. **CI 没处理 prerelease tag**——见第四节。
+4. **1.2.0 版本号已被占用（虽然从未 publish）**：本地 package.json 历史上出现过 1.2.0（当时 hooks 集成方案还在），虽然没真发到 npm，但后续要跳过 1.2.0 直接发 1.3.0，避免给读 git log 的人造成"1.2.0 存在但被撤回"的误解。
 
 这些不阻塞首次发版，但建议第一次发完之后开个 issue 修一下。
