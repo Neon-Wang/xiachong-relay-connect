@@ -30,15 +30,15 @@
 - OpenClaw 网关 → 加载这个插件 → 通过 WebSocket 连到 Cloudflare Workers 中继 → 你的 EvoPaimo 桌面客户端（Electron）
 - 不需要再单独跑 `evopaimo-connect.py` 这个 Python CLI 了
 
-我们提供 **三条互为镜像** 的下载渠道：
+我们当前有 **两条互为镜像** 的下载渠道（**npm 通道暂未启用**）：
 
 | 渠道 | URL 起点 | 适合谁 | 备注 |
 |---|---|---|---|
 | **A. GitHub Release** | `https://github.com/EvoMap/XiaChong/releases` | 想要权威源 + 历史所有版本的人 | 每个 tag 一个 release，永不变更 |
 | **B. 官方 R2 镜像** | `https://xiachong-api.aged-sea-ee35.workers.dev/channel-plugin/` | 中国大陆 / 网络受限的用户 | 走 Cloudflare 边缘节点，国内可达 |
-| **C. npm**（即将） | `npm install @evopaimo/channel` 或 `openclaw plugins install @evopaimo/channel` | 习惯包管理器的开发者 | 首次发包完成后启用，[追踪进度](./PUBLISHING.md#current-status-as-of-2026-04-22) |
+| ~~C. npm~~ | ~~`openclaw plugins install @evopaimo/channel`~~ | — | **PENDING**：未在 npmjs.com 注册成功，CI 中 npm publish 步骤已注释掉。状态见 [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单) |
 
-A 与 B 在 CI 同一次构建中 **同时** 写入：tarball 字节相同、sha256 相同。
+A 与 B 在 CI 同一次构建中 **同时** 写入：tarball 字节相同、sha256 相同。两条腿任选其一，都能走完后续配置流程。
 
 ---
 
@@ -111,16 +111,14 @@ curl -fsSL https://xiachong-api.aged-sea-ee35.workers.dev/channel-plugin/latest.
 
 > Staging 镜像（用于客户端 dev 模式 + 内部测试）：把上面 URL 里的主机换成 `primo.evomap.ai`，其余路径相同。生产环境请坚持用 `xiachong-api.aged-sea-ee35.workers.dev`。
 
-### 渠道 C — npm（首次发包完成后启用）
+### 渠道 C — npm（**PENDING，请勿尝试**）
 
-首次发包尚未完成（追踪进度见 [`PUBLISHING.md`](./PUBLISHING.md)）。完成后等价于：
+`@evopaimo/channel` 当前**没有**发布到 npm。在 npmjs.com 上搜不到、`npm install` 会拿到 404。
 
-```bash
-openclaw plugins install @evopaimo/channel          # 全局
-openclaw plugins install @evopaimo/channel@0.1.1    # 锁定版本
-```
-
-不需要先 `curl`，OpenClaw CLI 会自己拉。
+- 原因：首次发布需要持有 `@evopaimo` scope 的 npm 账号 + 2FA，目前还没安排到人。
+- CI 工作流里的 npm publish 步骤已显式注释掉（避免每次构建报 404 干扰）。
+- 重启时机和操作步骤：见 [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单)。
+- 在那之前，**请走渠道 A 或 B**。功能上完全等价，只是手动 `curl` 一次再 `openclaw plugins install ./xxx.tgz` 而已。
 
 ---
 
@@ -344,7 +342,7 @@ EVOPAIMO_DIST=~/.openclaw/extensions/evopaimo/dist \
 # 期望：PASS=27/27 FAIL=0
 ```
 
-也可以不装、直接对发布的 npm 包跑：`npx -p @evopaimo/channel evopaimo-channel-attack-sim`（npm 首发后可用）。
+> 当 npm 通道（PENDING）启用后，将额外支持 `npx -p @evopaimo/channel evopaimo-channel-attack-sim`。在那之前请用上面的本地路径跑。
 
 ---
 

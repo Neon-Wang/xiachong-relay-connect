@@ -1,10 +1,23 @@
 # Connector 发版流程（长期维护手册）
 
-> **谁该读这份文档**：长期维护 connector 发版的 maintainer（熟悉仓库、写代码、bump 版本的那个人）
-> **何时读**：接手 maintainer 职责时；发版失败需要排查时；处理 prerelease / 回滚等非日常场景时
+> ## ⚠️ DO NOT FOLLOW THIS DOCUMENT AS-IS (npm 部分 PENDING)
+>
+> **Status (2026-04-22)**: `evopaimo-relay-connect` 的 npm 通道当前**整个搁置**。
+> - `.github/workflows/publish-connectors.yml` 中的 `Publish connector to npm` step 已显式注释。
+> - 包从未在 npmjs.com 注册成功（5 次 CI publish 都因首次发包必须手动而失败）。
+> - 用户实际拿脚本的两条腿是 **GitHub mirror**（`Neon-Wang/xiachong-relay-connect` 自动同步）+ **R2 直链**（`https://primo.evomap.ai/connector/evopaimo-connect.py`）。
+>
+> **当前真正生效的发版流程**：照常 push 到 `main` → CI 自动同步 GitHub 镜像 + 上传 R2，零人工。本文 §三的"日常发版"流程对 GitHub/R2 部分有效，但所有 npm 步骤都暂时不要执行。
+>
+> **本文什么时候有用**：等到有人决定重启 npm 通道时——按 [`channel-plugin/HANDOVER.md` §"npm 通道重启清单"](./channel-plugin/HANDOVER.md#npm-通道重启清单) 反向打开 workflow 注释，再按本文 §二完成首发 + Trusted Publishing 绑定。本文 npm 相关章节冻结、不再单独维护。
+
+---
+
+> **谁该读这份文档**（历史读者画像）：长期维护 connector 发版的 maintainer（熟悉仓库、写代码、bump 版本的那个人）
+> **何时读**：接手 maintainer 职责时；npm 通道重启后处理发版失败排查时；处理 prerelease / 回滚等非日常场景时
 > **不需要读**：
 > - 只是改 connector 代码、不负责发版的开发者（照常 commit + push 到 `main`，CI 会自动跑第三节的流程）
-> - 一次性给我们发首次 npm publish 的同事 → 请直接读 [`NPM_ONBOARDING.md`](NPM_ONBOARDING.md)（10 分钟读完，做完就交还给我们）
+> - 一次性给我们发首次 npm publish 的同事 → 请直接读 [`NPM_ONBOARDING.md`](NPM_ONBOARDING.md)（10 分钟读完，做完就交还给我们）—— **当前不安排给任何同事**，先冷冻
 
 ---
 

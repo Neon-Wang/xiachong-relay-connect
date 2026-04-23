@@ -6,21 +6,23 @@
 
 | 维度 | CLI 模式（本 README） | Channel 插件模式（[`channel-plugin/`](./channel-plugin/)） |
 |---|---|---|
-| 包 | `evopaimo-relay-connect`（PyPI/npm wrapper） | `@evopaimo/channel`（npm，作为 OpenClaw plugin 装载） |
+| 包 | `evopaimo-relay-connect`（**npm PENDING**，目前用 R2/curl 发） | `@evopaimo/channel`（**npm PENDING**，目前用 R2/`openclaw plugins install ./xxx.tgz` 发） |
 | 运行位置 | 独立进程（用户手动或 systemd 拉起） | OpenClaw gateway 宿主进程内（插件） |
 | 调用 OpenClaw 的方式 | `subprocess.create_subprocess_exec("openclaw agent --message …")` | `channelRuntime.reply.recordInboundSessionAndDispatchReplyWithBase()`（SDK） |
-| 对用户的部署负担 | 装 Python + 一个脚本 + 改 PATH | `openclaw plugins install @evopaimo/channel` + 改 `~/.openclaw/openclaw.json` |
-| 稳定性 | ✅ 2026-04-22 v1.3.0 上线 | ✅ 2026-04-22 Phase 2 VM 端到端绿灯 |
+| 对用户的部署负担 | 装 Python + `curl` 脚本 + 改 PATH | `curl` 拉 tarball + `openclaw plugins install ./xxx.tgz` + 改 `~/.openclaw/openclaw.json` |
+| 稳定性 | ✅ 2026-04-22 v1.3.0 上线（CLI 主线路） | ✅ 2026-04-22 Phase 2 VM 端到端绿灯 |
 | 推荐场景 | 用户自管的 OpenClaw / 不能装插件的托管 OpenClaw | 用户自管的 OpenClaw（升级体验更好、原生观测） |
 
 两条路径**共用同一个 Workers relay 和 Electron 客户端**，切换时不需要迁移凭证：插件首次运行会自己跑 `/api/link` 再持久化到 `~/.openclaw/channels/evopaimo/state-default.json`。
 
-> npm 包名：`evopaimo-relay-connect`（**截至 2026-04-22 尚未在 npm 注册成功**——见 [`RELEASE.md`](./RELEASE.md)）
-> GitHub 镜像仓库：`Neon-Wang/xiachong-relay-connect`（仓库名沿用旧名，因为重命名会破坏已存在的 git remote）
+> **npm 通道当前 PENDING**（2026-04-22 起）：
+> - `evopaimo-relay-connect` 始终未在 npm 注册成功，[`RELEASE.md`](./RELEASE.md) 是历史 npm 发版手册，**别按它操作**。
+> - `@evopaimo/channel` 同样未发到 npm，channel-plugin 的 CI publish step 已注释掉。
+> - 两个包当前都通过 **R2 + GitHub Release** 双通道发布，端到端可用。重启 npm 通道的步骤见 [`channel-plugin/HANDOVER.md`](./channel-plugin/HANDOVER.md#npm-通道重启清单)（适用于两个包）。
 >
-> **维护者：要发版/排查 CI publish 失败，请直接读 [`RELEASE.md`](./RELEASE.md)。**
+> GitHub 镜像仓库：`Neon-Wang/xiachong-relay-connect`（仓库名沿用旧名，因为重命名会破坏已存在的 git remote）。
 >
-> 本 README **只讲 CLI 模式**。Channel 插件模式直接看 [`channel-plugin/README.md`](./channel-plugin/README.md)。
+> 本 README **只讲 CLI 模式**。Channel 插件模式直接看 [`channel-plugin/README.md`](./channel-plugin/README.md)，端到端连接流程看 [`channel-plugin/HANDOVER.md`](./channel-plugin/HANDOVER.md)。
 
 ---
 
@@ -301,9 +303,15 @@ curl -sS -X POST http://127.0.0.1:11453/exec \
 # → {"ok":true,"data":{"app_id":"client_xxx","link_code":"ABCDEF","secret":"...","has_token":true}}
 
 # 3) 用这组凭证在 VM/本地启 connector
-npx evopaimo-relay-connect --relay https://primo.evomap.ai \
-  --link-code ABCDEF --secret <the-secret> \
-  --agent-file /tmp/agent.json
+#    npm 通道 PENDING，下面这种 `npx evopaimo-relay-connect` 当前用不了。
+#    替代：直接跑 git clone 出来的 evopaimo-connect.py。
+# python3 -u connector/evopaimo-connect.py --relay https://primo.evomap.ai \
+#     --link-code ABCDEF --secret <the-secret> \
+#     --agent-file /tmp/agent.json
+# (历史命令，npm 重启后再恢复:)
+# npx evopaimo-relay-connect --relay https://primo.evomap.ai \
+#   --link-code ABCDEF --secret <the-secret> \
+#   --agent-file /tmp/agent.json
 
 # 4) 让 Electron 通过 WS 发一条测试消息（raw 通路，不触发 UI 渲染副作用）
 curl -sS -X POST http://127.0.0.1:11453/exec \
@@ -331,9 +339,15 @@ systemctl --user enable --now evopaimo-relay.service
 
 ## 与 EvoPaimo 项目的关系
 
-本目录是 [EvoPaimo monorepo](https://github.com/EvoMap/XiaChong) 的子项目，推送到 `main` 分支时自动同步到公开镜像 [Neon-Wang/xiachong-relay-connect](https://github.com/Neon-Wang/xiachong-relay-connect)。npm 包 `evopaimo-relay-connect` 通过 CI Trusted Publishing 自动发布。
+本目录是 [EvoPaimo monorepo](https://github.com/EvoMap/XiaChong) 的子项目，推送到 `main` 分支时自动同步到公开镜像 [Neon-Wang/xiachong-relay-connect](https://github.com/Neon-Wang/xiachong-relay-connect)。
 
-> **历史名说明**：GitHub 仓库名 `xiachong-relay-connect` 是历史代号，重命名会破坏所有已有的 git remote / fork，因此保留。npm 包名统一为 `evopaimo-relay-connect`，自 v1.3.0 起首次发布（1.2.0 因架构撤回从未 publish，详见 [RELEASE.md](./RELEASE.md) 第一节和 [POSTMORTEM](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)）。
+> **历史名说明**：GitHub 仓库名 `xiachong-relay-connect` 是历史代号，重命名会破坏所有已有的 git remote / fork，因此保留。npm 包名沿用 `evopaimo-relay-connect`。
+>
+> **npm 发布状态（PENDING）**：CI 工作流（[`publish-connectors.yml`](../.github/workflows/publish-connectors.yml)）中的 npm publish step 已注释掉，包从未在 npm 注册成功。当前用户拿这个脚本的方式：
+> 1. 直接 `git clone Neon-Wang/xiachong-relay-connect`（每次推送 `main` 都自动镜像过去）
+> 2. 或者 `curl -sO https://primo.evomap.ai/connector/evopaimo-connect.py` 拿单文件
+>
+> 重启 npm 通道的步骤见 [`channel-plugin/HANDOVER.md`](./channel-plugin/HANDOVER.md#npm-通道重启清单)。重启之后才需要再读 [`RELEASE.md`](./RELEASE.md) 的 npm 发版部分（标题虽叫"长期 maintainer 参考"，但当前内容已不可执行）。
 
 ---
 

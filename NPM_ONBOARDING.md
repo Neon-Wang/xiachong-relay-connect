@@ -1,5 +1,15 @@
 # npm 包首发 Onboarding（给持 npm 账号的同事）
 
+> ## ⚠️ DO NOT FOLLOW THIS DOCUMENT AS-IS (PENDING)
+>
+> **Status (2026-04-22)**: 首次 npm publish 当前**不安排**。原因：项目优先级调整，目前用 GitHub mirror + R2 直链已经能覆盖所有用户场景，不再阻塞团队。
+>
+> **如果你刚被发到这份文档**：请先停手，去找王浩宇确认是否真的要重启 npm 通道。重启的判断条件、操作步骤、需要协调的人见 [`channel-plugin/HANDOVER.md` §"npm 通道重启清单"](./channel-plugin/HANDOVER.md#npm-通道重启清单)。
+>
+> **如果确认要重启**：先把 `.github/workflows/publish-connectors.yml` 里被注释的 `Publish connector to npm` step 反注释掉，再按本文照常做 Part A + Part B。
+
+---
+
 > **请 15 分钟内读完**。做完 Part A + Part B 总共 10-20 分钟，之后你基本不用再碰这件事。
 
 ---

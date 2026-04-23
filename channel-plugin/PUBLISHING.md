@@ -1,10 +1,19 @@
 # Publishing `@evopaimo/channel`
 
-> **Who reads this**: maintainers cutting a new version of the OpenClaw
-> channel plugin.
+> ## ⚠️ DO NOT FOLLOW THIS DOCUMENT AS-IS (PENDING)
+>
+> **Status (2026-04-22)**: 整个 npm 发布通道当前已搁置。`.github/workflows/publish-channel-plugin.yml` 中的 npm publish step **已注释掉**；如果你按本文 §2 的流程跑 `npm publish`，仓库里的 CI 不会接管，你要自己继续手动维护版本号。
+>
+> **当前真正生效的发版流程**（仅 R2 + GitHub Release 两条腿）：见 [`HANDOVER.md`](./HANDOVER.md#日常发版流程稳态)。简单说就是 bump `package.json.version` → commit → push tag `channel-plugin-vX.Y.Z`，CI 自动写 R2 和 Release，零人工。
+>
+> **本文什么时候有用**：等到有人决定重启 npm 通道时——那时候按 [`HANDOVER.md` §"npm 通道重启清单"](./HANDOVER.md#npm-通道重启清单) 一步步反向打开 workflow 注释，然后参考本文 §2-§3 走首发 + Trusted Publishing 绑定。本文剩余内容暂时冻结、不再单独维护，仅作历史参考。
+
+---
+
+> **Who reads this** (历史读者画像): maintainers cutting a new version of the OpenClaw
+> channel plugin **via npm**.
 > **Who does NOT read this**: contributors who only touch plugin code —
-> just land your changes on `main`. The CI workflow handles the rest
-> once maintainers bump `version` and tag a release.
+> just land your changes on `main`. The CI workflow handles R2 + Release.
 
 ---
 
@@ -12,15 +21,17 @@
 
 | Dimension | State |
 |---|---|
-| npm package `@evopaimo/channel` | ❌ **not yet on npm** (awaiting first manual publish, see Section 2) |
-| Trusted Publishing binding | ⏳ pending (configured after the first manual publish creates the package) |
-| GitHub workflow | ✅ [`.github/workflows/publish-channel-plugin.yml`](../../.github/workflows/publish-channel-plugin.yml) — OIDC + pnpm |
-| Version in `package.json` | `0.1.0` (pre-first-publish) |
+| npm package `@evopaimo/channel` | ❌ **not on npm** — CI publish step intentionally commented out |
+| Trusted Publishing binding | ⏳ not configured (depends on first manual publish creating the package) |
+| GitHub workflow R2 + Release lanes | ✅ [`publish-channel-plugin.yml`](../../.github/workflows/publish-channel-plugin.yml) — green |
+| GitHub workflow npm lane | 🚫 **commented out**（搜 `# - name: Publish to npm` 可见） |
+| Version in `package.json` | `0.1.1`（已通过 R2 + Release 发出） |
 
 This is the same "Trusted Publishing needs the package to exist first"
 chicken-and-egg problem we already walked through with
 `evopaimo-relay-connect`. Steps below assume nobody has published the
-package yet.
+package yet — and will **only** be reachable after [`HANDOVER.md`'s npm
+restart checklist](./HANDOVER.md#npm-通道重启清单) is completed.
 
 ---
 

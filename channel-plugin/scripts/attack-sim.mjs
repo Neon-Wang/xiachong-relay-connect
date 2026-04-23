@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// Attack simulator for the @evopaimo/channel published artifact.
+// Attack simulator for the @evopaimo/channel built artifact.
 // Runs all P0/P1 attack scenarios against the *built* dist/index.js so
 // we are testing the exact code that ships to users, not just the source.
+// (Currently the artifact ships via R2 + GitHub Release tarball; npm
+//  publish lane is PENDING — see connector/channel-plugin/HANDOVER.md.)
 //
 // Usage:
 //   node scripts/attack-sim.mjs

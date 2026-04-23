@@ -20,7 +20,8 @@ remains available as a fallback when users prefer not to install plugins.
 | Phase 2 | M2: WebSocket runtime + inbound dispatch | ✅ |
 | Phase 2 | M3: Workers `/ws/openclaw` reused (no endpoint split) | ✅ |
 | Phase 2 | M5: Full VM end-to-end green | ✅ (Electron → Workers → plugin → Kimi → back) |
-| Phase 2 | M6: npm publish + CI | ✅ (workflow scaffolded, needs npm token) |
+| Phase 2 | M6a: R2 + GitHub Release distribution | ✅ (CI 自动写两条腿，2026-04-22 上线) |
+| Phase 2 | M6b: npm publish + Trusted Publishing | ⏸ **PENDING** — 等 `@evopaimo` scope 持有人手动首发；workflow 中相应 step 已注释。详见 [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单) |
 | Phase 2 | M4: Client "plugin online" indicator | ⏸ deferred |
 | Sec 0.1.1 | Hardening: P0/P1 fixes + 19 unit + 27 attack-sim | ✅ (see [Security](#security)) |
 
@@ -35,13 +36,13 @@ for the detailed rollout plan.
 > guide (download → sha256 verify → install → configure → pair → smoke).
 > What follows here is the dev-loop quick reference.
 
-Three distribution lanes, all built from the same CI run (identical sha256):
+Two active distribution lanes built from the same CI run (identical sha256):
 
 | Lane | URL | Best for |
 |---|---|---|
 | GitHub Release | `https://github.com/EvoMap/XiaChong/releases/tag/channel-plugin-v<ver>` | Auditing, pinning specific versions |
 | Cloudflare R2 mirror | `https://xiachong-api.aged-sea-ee35.workers.dev/channel-plugin/latest.tgz` | China-friendly direct download |
-| npm (after first publish) | `openclaw plugins install @evopaimo/channel` | Package-manager workflow |
+| ~~npm~~ | ~~`openclaw plugins install @evopaimo/channel`~~ | **PENDING** — package not on npm yet (CI publish step commented out). See [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单). |
 
 ```bash
 # Quick install via R2 mirror:
@@ -51,8 +52,9 @@ curl -fL https://xiachong-api.aged-sea-ee35.workers.dev/channel-plugin/latest.sh
   | shasum -a 256 -c -
 openclaw plugins install ./evopaimo-channel.tgz
 
-# Once npm Trusted Publishing is wired (see PUBLISHING.md):
-openclaw plugins install @evopaimo/channel
+# PENDING — `openclaw plugins install @evopaimo/channel` will Just Work
+# once the npm lane is reactivated (see HANDOVER.md). Until then use the
+# tarball flow above.
 
 # From a local .tgz (for dev loops):
 cd connector/channel-plugin
@@ -256,12 +258,12 @@ the *built* artifact, not just the source.
 cd connector/channel-plugin && pnpm run attack-sim
 # 27 attack scenarios run against dist/internals.js — exit 0 = all blocked
 
-# After installing the published package globally:
-npx -p @evopaimo/channel evopaimo-channel-attack-sim
-
-# Or against a specific extension install:
+# Against a specific extension install (works today):
 EVOPAIMO_DIST=/path/to/extensions/evopaimo/dist \
-  node node_modules/@evopaimo/channel/scripts/attack-sim.mjs
+  node /path/to/extensions/evopaimo/scripts/attack-sim.mjs
+
+# (PENDING) After the npm lane is reactivated, this will also work:
+#   npx -p @evopaimo/channel evopaimo-channel-attack-sim
 ```
 
 End-to-end demonstration: with 0.1.1 installed, edit `~/.openclaw/openclaw.json`
@@ -388,10 +390,9 @@ connector/channel-plugin/
 
 ## Publishing (for maintainers)
 
-See [`PUBLISHING.md`](./PUBLISHING.md) for step-by-step instructions on
-releasing a new version to npm via Trusted Publishing. TL;DR: bump
-`package.json` `version`, tag `@evopaimo/channel@x.y.z`, push — the
-`.github/workflows/publish-channel-plugin.yml` workflow handles the rest.
+**Active flow today** (R2 + GitHub Release): bump `connector/channel-plugin/package.json` `version`, commit, push, then tag `channel-plugin-vX.Y.Z` and `git push origin channel-plugin-vX.Y.Z`. CI builds, packs, uploads to R2 (staging + prod) and creates the GitHub Release. End-user impact: `https://xiachong-api.aged-sea-ee35.workers.dev/channel-plugin/latest.tgz` flips within a couple of minutes.
+
+**npm lane (PENDING)**: The historical step-by-step in [`PUBLISHING.md`](./PUBLISHING.md) describes the npm Trusted Publishing flow. **Do not follow it as-is** — the workflow steps it references are commented out. Reactivation procedure is in [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单).
 
 ---
 
