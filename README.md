@@ -1,11 +1,26 @@
-# evopaimo-relay-connect
+# EvoPaimo Connector
 
-> EvoPaimo 桌面宠物项目的中继连接器 — 在 OpenClaw 所在机器上运行，将 AI 回复安全地转发给远程桌面客户端。
->
+> EvoPaimo 桌面宠物与 OpenClaw 之间的中继连接层。现在有**两条平行路径**——根据部署场景二选一。
+
+## 两种模式：选哪个？
+
+| 维度 | CLI 模式（本 README） | Channel 插件模式（[`channel-plugin/`](./channel-plugin/)） |
+|---|---|---|
+| 包 | `evopaimo-relay-connect`（PyPI/npm wrapper） | `@evopaimo/channel`（npm，作为 OpenClaw plugin 装载） |
+| 运行位置 | 独立进程（用户手动或 systemd 拉起） | OpenClaw gateway 宿主进程内（插件） |
+| 调用 OpenClaw 的方式 | `subprocess.create_subprocess_exec("openclaw agent --message …")` | `channelRuntime.reply.recordInboundSessionAndDispatchReplyWithBase()`（SDK） |
+| 对用户的部署负担 | 装 Python + 一个脚本 + 改 PATH | `openclaw plugins install @evopaimo/channel` + 改 `~/.openclaw/openclaw.json` |
+| 稳定性 | ✅ 2026-04-22 v1.3.0 上线 | ✅ 2026-04-22 Phase 2 VM 端到端绿灯 |
+| 推荐场景 | 用户自管的 OpenClaw / 不能装插件的托管 OpenClaw | 用户自管的 OpenClaw（升级体验更好、原生观测） |
+
+两条路径**共用同一个 Workers relay 和 Electron 客户端**，切换时不需要迁移凭证：插件首次运行会自己跑 `/api/link` 再持久化到 `~/.openclaw/channels/evopaimo/state-default.json`。
+
 > npm 包名：`evopaimo-relay-connect`（**截至 2026-04-22 尚未在 npm 注册成功**——见 [`RELEASE.md`](./RELEASE.md)）
 > GitHub 镜像仓库：`Neon-Wang/xiachong-relay-connect`（仓库名沿用旧名，因为重命名会破坏已存在的 git remote）
 >
 > **维护者：要发版/排查 CI publish 失败，请直接读 [`RELEASE.md`](./RELEASE.md)。**
+>
+> 本 README **只讲 CLI 模式**。Channel 插件模式直接看 [`channel-plugin/README.md`](./channel-plugin/README.md)。
 
 ---
 
@@ -269,6 +284,38 @@ connector/.venv/bin/python3.14 connector/scripts/e2e-test-client.py \
 
 这个脚本就是 2026-04-22 v1.3.0 VM 端到端验证用的原件，实测结果见 [docs/connector-handover.md](../docs/connector-handover.md) 第二节。
 
+### 用真实 Electron 客户端做 E2E（不写死凭证）
+
+Electron 客户端自带一个 dev-only test HTTP 服务（`client/electron/test-server.js`，默认 `127.0.0.1:11453`），能直接吐当前 link_code / secret，免得手抄 UI。调用条件：`pnpm electron:dev` 在跑，Bearer token 在 `~/Library/Application Support/EvoPaimo/test-server-token.txt`（macOS）或 `~/.config/EvoPaimo/test-server-token.txt`（Linux）。
+
+```bash
+# 1) 启 Electron dev（后台）
+pnpm --filter openclaw-relay-client electron:dev &
+
+# 2) 读 token、拿 credentials
+TOKEN=$(cat "$HOME/Library/Application Support/EvoPaimo/test-server-token.txt")
+curl -sS -X POST http://127.0.0.1:11453/exec \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"cmd":"credentials"}'
+# → {"ok":true,"data":{"app_id":"client_xxx","link_code":"ABCDEF","secret":"...","has_token":true}}
+
+# 3) 用这组凭证在 VM/本地启 connector
+npx evopaimo-relay-connect --relay https://primo.evomap.ai \
+  --link-code ABCDEF --secret <the-secret> \
+  --agent-file /tmp/agent.json
+
+# 4) 让 Electron 通过 WS 发一条测试消息（raw 通路，不触发 UI 渲染副作用）
+curl -sS -X POST http://127.0.0.1:11453/exec \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"cmd":"send_message","args":{"text":"ping"}}'
+
+# 5) connector 日志会看到 [<-] client_xxx: ping 和 [->] ...回推 reply
+```
+
+可用 cmd 列表见 `client/src/app/page.tsx` 的 `onTestCmd` switch：`credentials` / `state` / `send_message` / `ui_send_message` / `inspect_messages` / `register_relay` 等。所有 `/exec` 的 `cmd` 都经过 Bearer token 鉴权且 bind 127.0.0.1，本机不 expose。
+
 ### systemd 用户服务模板
 
 `connector/scripts/evopaimo-relay.service` 是生产环境部署参考。使用方式：
@@ -292,6 +339,7 @@ systemctl --user enable --now evopaimo-relay.service
 
 ## 相关文档
 
+- [**Channel 插件模式（Phase 2，推荐）**](./channel-plugin/README.md) ← 如果宿主 OpenClaw 允许装插件
 - [Workers 后端](../workers/README.md)
 - [客户端](../client/README.md)
 - [**交接文档（T1 发版 / T2 VM 切换 / T3 LLM 连通）**](../docs/connector-handover.md) ← v1.3.0 上线前必读
@@ -299,4 +347,6 @@ systemctl --user enable --now evopaimo-relay.service
 - [发版手册（长期 maintainer 参考）](./RELEASE.md)
 - [持久化部署 + AI Agent 调试 SOP](./PERSISTENT_SETUP.md)
 - [Phase 2 路线图：channel plugin](../docs/specs/openclaw-hooks-integration/phase-2-roadmap.md)
+- [Phase 2 实施计划（含 M1-M7 验收条件）](../docs/specs/openclaw-hooks-integration/plan-phase-2.md)
+- [Phase 2 spec（channel plugin 架构与决策原因）](../docs/specs/openclaw-hooks-integration/spec-2-channel-plugin.md)
 - [Phase 1 撤回事故复盘](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)

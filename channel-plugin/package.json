@@ -1,0 +1,88 @@
+{
+  "name": "@evopaimo/channel",
+  "version": "0.1.1",
+  "description": "EvoPaimo channel plugin for OpenClaw. Bridges the desktop pet client (via Cloudflare Workers relay) into the local OpenClaw agent runtime without requiring a CLI subprocess.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./setup-entry": {
+      "import": "./dist/setup-entry.js",
+      "types": "./dist/setup-entry.d.ts"
+    },
+    "./internals": {
+      "import": "./dist/internals.js",
+      "types": "./dist/internals.d.ts"
+    },
+    "./openclaw.plugin.json": "./openclaw.plugin.json"
+  },
+  "files": [
+    "dist/",
+    "scripts/",
+    "openclaw.plugin.json",
+    "README.md",
+    "INSTALL.md",
+    "CHANGELOG.md"
+  ],
+  "bin": {
+    "evopaimo-channel-attack-sim": "./scripts/attack-sim.mjs"
+  },
+  "openclaw": {
+    "extensions": ["./dist/index.js"],
+    "setupEntry": "./dist/setup-entry.js",
+    "channel": {
+      "id": "evopaimo",
+      "label": "EvoPaimo",
+      "blurb": "Relay desktop pet client through the EvoPaimo Cloudflare Workers relay."
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "attack-sim": "node scripts/attack-sim.mjs",
+    "ci": "pnpm typecheck && pnpm test && pnpm build && pnpm attack-sim",
+    "prepack": "pnpm run build",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.4.0"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": false
+    }
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "openclaw": "2026.4.5",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Neon-Wang/XiaChong.git",
+    "directory": "connector/channel-plugin"
+  },
+  "keywords": [
+    "openclaw",
+    "evopaimo",
+    "channel-plugin",
+    "xiachong"
+  ]
+}
