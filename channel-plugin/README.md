@@ -23,7 +23,7 @@ remains available as a fallback when users prefer not to install plugins.
 | Phase 2 | M6a: R2 + GitHub Release distribution | ✅ (CI 自动写两条腿，2026-04-22 上线) |
 | Phase 2 | M6b: npm publish + Trusted Publishing | ⏸ **PENDING** — 等 `@evopaimo` scope 持有人手动首发；workflow 中相应 step 已注释。详见 [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单) |
 | Phase 2 | M4: Client "plugin online" indicator | ⏸ deferred |
-| Sec 0.1.1 | Hardening: P0/P1 fixes + 19 unit + 27 attack-sim | ✅ (see [Security](#security)) |
+| Sec 0.1.x | Hardening: P0/P1 fixes + 19 unit + 27 attack-sim | ✅ (see [Security](#security)) |
 
 See [`docs/specs/openclaw-hooks-integration/plan-phase-2.md`](../../docs/specs/openclaw-hooks-integration/plan-phase-2.md)
 for the detailed rollout plan.
@@ -59,8 +59,8 @@ openclaw plugins install ./evopaimo-channel.tgz
 # From a local .tgz (for dev loops):
 cd connector/channel-plugin
 pnpm install && pnpm build && pnpm pack
-scp evopaimo-channel-0.1.1.tgz xc-debian:~/
-ssh xc-debian "openclaw plugins install --force ~/evopaimo-channel-0.1.1.tgz"
+scp evopaimo-channel-0.1.2.tgz xc-debian:~/
+ssh xc-debian "openclaw plugins install --force ~/evopaimo-channel-0.1.2.tgz"
 # If config validation complains about a stale `channels.evopaimo`, see the
 # "Re-install gotcha" section below.
 ```
@@ -87,7 +87,7 @@ saved = cfg.get('channels', {}).pop('evopaimo', None)
 p.write_text(json.dumps(cfg, indent=2))
 pathlib.Path.home().joinpath('.openclaw/channels-evopaimo.saved.json').write_text(json.dumps(saved))
 "
-openclaw plugins install --force ~/evopaimo-channel-0.1.1.tgz
+openclaw plugins install --force ~/evopaimo-channel-0.1.2.tgz
 python3 -c "
 import json, pathlib
 p = pathlib.Path.home() / '.openclaw/openclaw.json'
@@ -185,12 +185,22 @@ OpenClaw agent (kimi/k2p5, google/gemini-*, …)
 2. `pairing.ts` tries `/api/agent-auth` with a saved `agent_token`.
    On first run or if rejected, it falls back to `/api/link` with
    `linkCode + secret`, persists the new `agent_token`, and returns a
-   short-lived WS `token`.
+   short-lived WS `token`. **Since 0.1.2** both calls ship an
+   `openclaw_device_info` payload (`hostname`, `platform`, `os_release`,
+   `arch`, `plugin_version`) built via `buildDeviceInfo()`; the relay
+   stamps it into `user_clients.openclaw_*` so the EvoPaimo website's
+   `/account/clients` page can show "OpenClaw: mac-mini-2024 · macOS
+   15.2 · plugin 0.1.2" next to each device.
 3. `ws-client.ts` opens `wss://<relay>/ws/openclaw?token=…`, handles
    reactive `{type:"ping"}` frames with `{type:"pong"}`, and reconnects
    with exponential backoff. On 401/403 during handshake it asks the
    token resolver for a fresh token, wiping the stored `agent_token`
    before the next try.
+   **Terminal close code 4004 (`WS_CLOSE.UNBOUND`) is special**: it
+   means the user hit "解绑设备" on the web dashboard. We log an error,
+   flip `stopped = true`, and refuse to reconnect — retrying with a
+   revoked `linkCode` would spin forever. Re-pair via `openclaw plugins
+   install` with fresh credentials from the dashboard.
 4. Inbound `message` / `init_request` frames are forwarded to
    `dispatch.ts`, which wraps the text in the emotion prompt (if
    enabled), calls `channelRuntime.reply.recordInboundSessionAndDispatchReplyWithBase()`,
@@ -234,7 +244,7 @@ Cloudflare Workers relay. We assume an attacker can: (a) MITM the wire
 control the relay backend (L4). Defenses must therefore live **inside
 the connector**, not inside the relay.
 
-### What 0.1.1 enforces
+### What 0.1.x enforces
 
 | Defense | Where | What it blocks |
 |---|---|---|
@@ -266,7 +276,7 @@ EVOPAIMO_DIST=/path/to/extensions/evopaimo/dist \
 #   npx -p @evopaimo/channel evopaimo-channel-attack-sim
 ```
 
-End-to-end demonstration: with 0.1.1 installed, edit `~/.openclaw/openclaw.json`
+End-to-end demonstration: with 0.1.2 installed, edit `~/.openclaw/openclaw.json`
 to set `relayUrl: "http://attacker.evil/"` and restart the gateway.
 Expected outcome:
 
@@ -286,8 +296,9 @@ The connector never opens the WebSocket — `linkCode + secret` cannot leak.
 with network send`. This is a **false positive**:
 
 - The flagged `fs.readFile` reads our own saved
-  `~/.openclaw/state/evopaimo-default.json` (the `agentToken` we cached
-  during pairing for reconnection).
+  `~/.openclaw/channels/evopaimo/state-<accountId>.json` (the `agentToken`
+  we cached during pairing for reconnection). Versions <= 0.1.0 may be
+  migrated from `~/.openclaw/extensions/evopaimo/state-<accountId>.json`.
 - The unrelated `ws.send` in the same bundle forwards user chat messages
   to the relay.
 - There is no data path from "read agentToken" to "send agentToken over
@@ -329,7 +340,7 @@ pnpm typecheck         # tsc --noEmit
 pnpm build             # tsup → dist/index.js, dist/setup-entry.js, dist/internals.js, dist/*.d.ts
 pnpm attack-sim        # 27 attack scenarios against dist/internals.js
 pnpm ci                # typecheck + test + build + attack-sim
-pnpm pack              # evopaimo-channel-0.1.1.tgz
+pnpm pack              # evopaimo-channel-0.1.2.tgz
 ```
 
 ### VM end-to-end smoke test

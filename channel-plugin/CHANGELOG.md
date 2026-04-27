@@ -8,6 +8,43 @@ Dates are UTC (YYYY-MM-DD).
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-04-23
+
+OpenClaw-side device observability + unbind-aware reconnect logic.
+
+### Added
+
+- **Device info reporting on pairing (P3)** — `pairWithRelay()` now
+  accepts a `deviceInfo` payload (`hostname`, `platform`, `os_release`,
+  `arch`, `plugin_version`) and forwards it to `/api/link` and
+  `/api/agent-auth` under the `openclaw_device_info` key. Workers
+  stamps this into `user_clients.openclaw_*` (migration `0031`) so the
+  `/account/clients` dashboard can show which machine the OpenClaw is
+  actually running on.
+- `buildDeviceInfo()` helper in `runtime/pairing.ts` — clamps each
+  field to 128 chars and swallows `os.hostname()` / `os.release()`
+  throws (some sandboxed launchers raise).
+- Plugin version is read from bundled `package.json` at module load
+  via `createRequire(import.meta.url)`; a missing / unreadable
+  `package.json` leaves the field unset rather than hard-failing.
+
+### Changed
+
+- **`ws-client.ts` — stop auto-reconnect on `WS_CLOSE.UNBOUND` (4004)**
+  — when the relay closes our WebSocket with close code 4004 ("device
+  unbound from dashboard"), the client now logs an `error` and
+  marks itself `stopped = true` instead of entering the backoff loop.
+  Reconnecting with a revoked `linkCode` would just spin forever; the
+  user needs to re-pair the plugin before further progress is
+  possible, and the log line tells the operator exactly that.
+
+### Compatibility
+
+- Back-compat safe: server treats missing `openclaw_device_info` as
+  "keep existing columns unchanged". Older plugin builds that don't
+  send the payload continue to work, they just show blank in the
+  dashboard until they update.
+
 ## [0.1.1] — 2026-04-22
 
 Security hardening release. Closes the gaps surfaced by the Phase-2

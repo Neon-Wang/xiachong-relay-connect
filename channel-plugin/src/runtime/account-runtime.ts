@@ -13,6 +13,8 @@
  * prompts are handled serially to preserve Phase 1 CLI semantics.
  */
 
+import { createRequire } from "node:module";
+
 import type {
   ChannelAccountSnapshot,
   ChannelGatewayContext,
@@ -33,8 +35,10 @@ import {
   type GatewayLogSink,
 } from "./dispatch.js";
 import {
+  buildDeviceInfo,
   forgetStoredAgentToken,
   pairWithRelay,
+  type DeviceInfo,
   type PairingLogger,
 } from "./pairing.js";
 import {
@@ -44,6 +48,38 @@ import {
 } from "./ws-client.js";
 
 const CHANNEL_ID = "evopaimo";
+
+/**
+ * Best-effort read of the plugin version from the bundled `package.json`.
+ *
+ * Runs at module load so we only pay the disk hit once per gateway
+ * process. If anything goes wrong (missing file in an unusual bundler
+ * layout, JSON corruption), we fall through to undefined; `buildDeviceInfo`
+ * treats undefined as "don't send this field" rather than sending an
+ * empty string.
+ *
+ * We avoid a dynamic `import("../../package.json")` because tsup
+ * bundles ESM to a single file and mixing JSON imports with that
+ * pipeline causes half the version metadata to land in the wrong
+ * chunk. Resolving relative to `import.meta.url` → the dist file's
+ * location → `../package.json` is robust across the published layout
+ * (`dist/index.js` + `package.json` siblings).
+ */
+function readPluginVersion(): string | undefined {
+  try {
+    const req = createRequire(import.meta.url);
+    const pkg = req("../../package.json") as { version?: string };
+    return typeof pkg.version === "string" ? pkg.version : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const PLUGIN_VERSION = readPluginVersion();
+
+function currentDeviceInfo(): DeviceInfo {
+  return buildDeviceInfo(PLUGIN_VERSION);
+}
 
 /** Registry of active per-(account) runtimes keyed by accountId. */
 const REGISTRY = new Map<string, EvoPaimoAccountRuntime>();
@@ -156,6 +192,7 @@ class EvoPaimoAccountRuntime {
         linkCode: ctx.account.linkCode,
         secret: ctx.account.secret,
         logger: pairingLogger,
+        deviceInfo: currentDeviceInfo(),
       });
       ctx.log?.info?.(
         `evopaimo: paired via ${result.via} (appId=${result.appId || "?"} agentId=${result.agentId || "?"})`,

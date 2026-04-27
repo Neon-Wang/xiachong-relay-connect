@@ -26,6 +26,21 @@
 
 ---
 
+## 文件清单
+
+| 路径 | 职责 |
+|---|---|
+| `evopaimo-connect.py` | Python CLI connector 主体：relay 配对、WebSocket 循环、OpenClaw CLI subprocess 调用、回复解析 |
+| `bin/run.js` | npm bin 包装入口；包名恢复后暴露为 `evopaimo-relay-connect` |
+| `package.json` | npm 包元数据（当前 npm 发布 pending，`bin` 名为 `evopaimo-relay-connect`） |
+| `requirements.txt` | Python 运行依赖：`websockets`、`requests` |
+| `tests/` | 回复解析与 CLI 行为单元测试 |
+| `scripts/` | E2E 测试客户端与 systemd 用户服务模板 |
+| `channel-plugin/` | OpenClaw channel plugin 模式，独立 README 与发布流程 |
+| `PERSISTENT_SETUP.md` / `RELEASE.md` | 持久化部署指南与历史发版手册 |
+
+---
+
 ## 这个脚本做了什么
 
 `evopaimo-connect.py` 是一个**纯文本聊天消息转发器**。它的完整工作流程如下：
@@ -54,8 +69,8 @@
 
 | 命令 | 调用条件 | 副作用 |
 |---|---|---|
-| `evopaimo-connect --relay X --link-code Y --secret Z` | 默认子命令；启动 connector 进入消息转发主循环。`--link-code` / `--secret` 仅首次配对时使用，后续 connector 会用 `~/.config/evopaimo/agent.json` 里保存的 `agent_token` 自动认证。 | 写入 `agent.json`（首次），与 relay 建立 WebSocket 长连接，收到消息时 `subprocess` 拉起 `openclaw agent` 子进程 |
-| `evopaimo-connect status` | 排查问题时快速诊断：输出 relay 配对状态、OpenClaw CLI 是否在 PATH 中。 | 仅读取，无副作用。Exit code 0 = OK；1 = OpenClaw CLI 不可用（connector 仍能启动但只能 echo） |
+| `python3 -u evopaimo-connect.py --relay X --link-code Y --secret Z` | 默认启动方式；进入 connector 消息转发主循环。`--link-code` / `--secret` 仅首次配对时使用，后续 connector 会用 `~/.config/evopaimo/agent.json` 里保存的 `agent_token` 自动认证。npm 通道恢复后等价入口是 `evopaimo-relay-connect ...`。 | 写入 `agent.json`（首次），与 relay 建立 WebSocket 长连接，收到消息时 `subprocess` 拉起 `openclaw agent` 子进程 |
+| `python3 -u evopaimo-connect.py status` | 排查问题时快速诊断：输出 relay 配对状态、OpenClaw CLI 是否在 PATH 中。npm 通道恢复后等价入口是 `evopaimo-relay-connect status`。 | 仅读取，无副作用。Exit code 0 = OK；1 = OpenClaw CLI 不可用（connector 仍能启动但只能 echo） |
 
 ---
 
@@ -141,14 +156,14 @@ python3 -u evopaimo-connect.py status
 
 ## 工作原理
 
-```
-EvoPaimo 客户端
-    ↕ WebSocket
-Cloudflare Workers (Relay)
-    ↕ WebSocket
-evopaimo-connect.py
-    ↓ subprocess.create_subprocess_exec
-openclaw agent --session-id <label> --message <text>
+```mermaid
+flowchart TB
+  Client["EvoPaimo Client"] <-->|"WebSocket"| Relay["Cloudflare Workers Relay"]
+  Relay <-->|"WebSocket"| Connector["evopaimo-connect.py"]
+  Connector -->|"subprocess.create_subprocess_exec"| OpenClaw["openclaw agent\n--session-id label --message text"]
+  OpenClaw -->|"AI reply"| Connector
+  Connector -->|"emotion full_text tts_text"| Relay
+  Relay -->|"structured reply"| Client
 ```
 
 1. 用 EvoPaimo 客户端给的 Link Code + Secret 绑定到中转服务器（首次）；后续用保存的 `agent_token` 自动认证

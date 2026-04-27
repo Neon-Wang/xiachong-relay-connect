@@ -22,6 +22,14 @@ import {
   type OutboundFrame,
 } from "../protocol.js";
 
+/**
+ * Application-defined close codes emitted by the relay (mirror of
+ * `workers/src/relay/protocol.ts` → `WS_CLOSE`). We only surface the
+ * terminal ones the plugin should react to — everything else falls
+ * through to the generic reconnect path.
+ */
+const WS_CLOSE_UNBOUND = 4004;
+
 export type WsClientLogger = {
   debug?: (message: string, meta?: Record<string, unknown>) => void;
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -279,6 +287,29 @@ export class RelayWsClient {
     }
     this.onDisconnect?.({ code, reason, authRejected });
     if (this.stopped) return;
+
+    // Terminal close: server says this device's linkCode is no longer
+    // valid (user unbound via dashboard / admin unbind). Do NOT reconnect —
+    // the stored linkCode is dead and retrying in a tight loop would just
+    // burn CPU/bandwidth for no recovery path. Human intervention required
+    // (re-run `openclaw plugins install` with fresh credentials). We also
+    // promote the log level so this shows up in casual `journalctl` tails.
+    if (code === WS_CLOSE_UNBOUND) {
+      this.logger.error(
+        "relay unbound this device — credentials are no longer valid, reconnect suppressed",
+        {
+          accountId: this.accountId,
+          code,
+          reason,
+          actionRequired:
+            "re-pair OpenClaw with fresh link_code/secret from website",
+        },
+      );
+      this.stopped = true;
+      this.clearReconnectTimer();
+      return;
+    }
+
     this.scheduleReconnect();
   }
 

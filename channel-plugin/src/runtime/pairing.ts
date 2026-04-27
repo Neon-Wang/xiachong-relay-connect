@@ -40,6 +40,22 @@ export type PairingLogger = {
   debug?: (message: string, meta?: Record<string, unknown>) => void;
 };
 
+/**
+ * OpenClaw-side machine identity, sent alongside pairing requests so the
+ * user's dashboard can show "connector: running on MacBookPro-16 · macOS
+ * 15.2 · plugin 0.1.2" next to each device. Every field is optional so
+ * the server can keep old entries blank without blowing up. Callers
+ * should populate it via `buildDeviceInfo()` below; unit tests use the
+ * trivial stub `{}`.
+ */
+export type DeviceInfo = {
+  hostname?: string;
+  platform?: string;
+  os_release?: string;
+  arch?: string;
+  plugin_version?: string;
+};
+
 export type PairingOptions = {
   accountId: string;
   relayUrl: string;
@@ -50,6 +66,12 @@ export type PairingOptions = {
   /** Injection hook for unit tests. */
   fetchImpl?: typeof fetch;
   logger?: PairingLogger;
+  /**
+   * OpenClaw host identity. Included in `/api/link` and `/api/agent-auth`
+   * request bodies so the dashboard can surface which machine is bound
+   * to a given link_code. Omitted in unit tests that don't care.
+   */
+  deviceInfo?: DeviceInfo;
 };
 
 export type StoredAgentCredentials = {
@@ -61,6 +83,67 @@ export type StoredAgentCredentials = {
 
 function normaliseRelayBase(relayUrl: string): string {
   return relayUrl.trim().replace(/\/+$/, "");
+}
+
+/**
+ * Collect OpenClaw host machine identity to ship alongside pairing
+ * requests. Keep the payload minimal — this is dashboard-observability,
+ * not telemetry:
+ *
+ *   - `hostname` is best-effort (`os.hostname()` can throw under some
+ *     container / sandboxed launchers; we clamp + swallow).
+ *   - `platform` uses Node's canonical codes (darwin / win32 / linux / …).
+ *   - `os_release` is e.g. `"24.3.0"` on macOS 15.3 — not a marketing
+ *     name, but the backend maps the pair `(platform, os_release)` for
+ *     display.
+ *   - `arch` is arm64 / x64 / etc.
+ *   - `plugin_version` is read from the bundled `package.json`; when
+ *     unavailable (running from source / unit tests) we pass undefined
+ *     and the server stays null.
+ *
+ * All fields are clamped to 128 chars to defend against pathological
+ * hostnames. The server-side validation accepts up to 128 anyway, but
+ * we also clamp here so noisy logs don't grow unboundedly.
+ */
+export function buildDeviceInfo(pluginVersion?: string): DeviceInfo {
+  const clamp = (v: string | undefined): string | undefined => {
+    if (!v) return undefined;
+    const trimmed = v.slice(0, 128);
+    return trimmed.length > 0 ? trimmed : undefined;
+  };
+  let hostname: string | undefined;
+  try {
+    hostname = os.hostname();
+  } catch {
+    hostname = undefined;
+  }
+  let release: string | undefined;
+  try {
+    release = os.release();
+  } catch {
+    release = undefined;
+  }
+  let arch: string | undefined;
+  try {
+    arch = os.arch();
+  } catch {
+    arch = undefined;
+  }
+  const info: DeviceInfo = {
+    hostname: clamp(hostname),
+    platform: clamp(process.platform),
+    os_release: clamp(release),
+    arch: clamp(arch),
+    plugin_version: clamp(pluginVersion),
+  };
+  // Strip undefined keys — keeps the wire payload tidy and tests that
+  // match on exact shape don't need to litter `undefined` keys.
+  for (const k of Object.keys(info) as (keyof DeviceInfo)[]) {
+    if (info[k] === undefined) {
+      delete info[k];
+    }
+  }
+  return info;
 }
 
 /**
@@ -225,9 +308,15 @@ export async function pairWithRelay(opts: PairingOptions): Promise<PairingResult
     logger?.info?.("trying agent-auth with stored agent_token", {
       accountId: opts.accountId,
     });
+    const agentAuthBody: Record<string, unknown> = {
+      agent_token: stored.agentToken,
+    };
+    if (opts.deviceInfo) {
+      agentAuthBody.openclaw_device_info = opts.deviceInfo;
+    }
     const res = await postJson(
       `${relay}/api/agent-auth`,
-      { agent_token: stored.agentToken },
+      agentAuthBody,
       fetchImpl,
     );
     if (res.ok && res.data?.token) {
@@ -258,13 +347,17 @@ export async function pairWithRelay(opts: PairingOptions): Promise<PairingResult
   }
 
   const agentToken = generateAgentToken();
+  const linkBody: Record<string, unknown> = {
+    link_code: opts.linkCode,
+    secret: opts.secret,
+    agent_token: agentToken,
+  };
+  if (opts.deviceInfo) {
+    linkBody.openclaw_device_info = opts.deviceInfo;
+  }
   const linkRes = await postJson(
     `${relay}/api/link`,
-    {
-      link_code: opts.linkCode,
-      secret: opts.secret,
-      agent_token: agentToken,
-    },
+    linkBody,
     fetchImpl,
   );
   if (!linkRes.ok || !linkRes.data?.token) {

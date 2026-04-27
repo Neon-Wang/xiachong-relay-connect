@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   __internal,
+  buildDeviceInfo,
   forgetStoredAgentToken,
   pairWithRelay,
   type StoredAgentCredentials,
@@ -160,5 +161,108 @@ describe("pairWithRelay", () => {
     });
     await forgetStoredAgentToken({ accountId: "default", stateDir });
     expect(await __internal.readStoredCredentials(stateDir, "default")).toBeNull();
+  });
+
+  it("forwards deviceInfo to both /api/link and /api/agent-auth", async () => {
+    const seen: Array<{ url: string; body: Record<string, unknown> }> = [];
+    const fakeFetch = async (url: string | URL, init?: RequestInit): Promise<Response> => {
+      seen.push({
+        url: String(url),
+        body: JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>,
+      });
+      return new Response(
+        JSON.stringify({ token: "T1", app_id: "app-x", agent_id: "agent-x" }),
+        { status: 200 },
+      );
+    };
+
+    const deviceInfo = {
+      hostname: "macbook-pro-16.local",
+      platform: "darwin",
+      os_release: "24.3.0",
+      arch: "arm64",
+      plugin_version: "0.1.2",
+    };
+
+    // First run → /api/link
+    await pairWithRelay({
+      accountId: "default",
+      relayUrl: "https://relay.example",
+      linkCode: "CODE",
+      secret: "SECRET",
+      stateDir,
+      fetchImpl: fakeFetch as unknown as typeof fetch,
+      deviceInfo,
+    });
+
+    // Second run → /api/agent-auth (reuses the persisted agent_token)
+    await pairWithRelay({
+      accountId: "default",
+      relayUrl: "https://relay.example",
+      linkCode: "CODE",
+      secret: "SECRET",
+      stateDir,
+      fetchImpl: fakeFetch as unknown as typeof fetch,
+      deviceInfo,
+    });
+
+    expect(seen).toHaveLength(2);
+    expect(seen[0].url).toBe("https://relay.example/api/link");
+    expect(seen[0].body.openclaw_device_info).toEqual(deviceInfo);
+    expect(seen[1].url).toBe("https://relay.example/api/agent-auth");
+    expect(seen[1].body.openclaw_device_info).toEqual(deviceInfo);
+  });
+
+  it("omits openclaw_device_info when deviceInfo is not provided", async () => {
+    const captured: Array<Record<string, unknown>> = [];
+    const fakeFetch = async (_url: string | URL, init?: RequestInit): Promise<Response> => {
+      captured.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
+      return new Response(
+        JSON.stringify({ token: "T1", app_id: "app-x", agent_id: "agent-x" }),
+        { status: 200 },
+      );
+    };
+
+    await pairWithRelay({
+      accountId: "default",
+      relayUrl: "https://relay.example",
+      linkCode: "CODE",
+      secret: "SECRET",
+      stateDir,
+      fetchImpl: fakeFetch as unknown as typeof fetch,
+    });
+
+    expect(captured).toHaveLength(1);
+    expect(captured[0]).not.toHaveProperty("openclaw_device_info");
+  });
+});
+
+describe("buildDeviceInfo", () => {
+  it("populates hostname/platform/arch and drops unset fields", () => {
+    const info = buildDeviceInfo();
+    // platform is always present on a live Node runtime.
+    expect(info.platform).toEqual(process.platform);
+    // arch is typically present; tolerate edge cases where os.arch throws.
+    if ("arch" in info) {
+      expect(info.arch).toMatch(/^[a-z0-9_-]+$/i);
+    }
+    // plugin_version not passed → absent
+    expect(info).not.toHaveProperty("plugin_version");
+  });
+
+  it("includes plugin_version when provided", () => {
+    const info = buildDeviceInfo("9.9.9");
+    expect(info.plugin_version).toBe("9.9.9");
+  });
+
+  it("drops empty string plugin_version", () => {
+    const info = buildDeviceInfo("");
+    expect(info).not.toHaveProperty("plugin_version");
+  });
+
+  it("clamps absurdly long values to 128 chars", () => {
+    const huge = "A".repeat(500);
+    const info = buildDeviceInfo(huge);
+    expect(info.plugin_version?.length).toBe(128);
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@evopaimo/channel",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "EvoPaimo channel plugin for OpenClaw. Bridges the desktop pet client (via Cloudflare Workers relay) into the local OpenClaw agent runtime without requiring a CLI subprocess.",
   "type": "module",
   "main": "./dist/index.js",
