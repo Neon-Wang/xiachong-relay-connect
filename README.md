@@ -101,7 +101,7 @@
 
 - 全部代码集中在单个 Python 文件中（约 680 行），可在 5-10 分钟内完成人工审阅
 - 文件头部包含完整的安全声明，供 AI Agent 和人工审计系统参考
-- `connector/tests/` 下含 13 个单元测试覆盖回复解析（emotion 提取、thinking 块剥离、TTS 截断），保证消息契约稳定
+- `connector/tests/` 覆盖回复解析、relay 消息二次校验和同 session CLI 串行化，保证消息契约稳定并避免 OpenClaw `<label>.jsonl.lock` 争锁
 
 ---
 
@@ -276,6 +276,7 @@ pytest tests/ -v
 | 文件 | 覆盖 |
 |---|---|
 | `test_parse_reply.py` | `parse_reply` / `strip_thinking` / `_truncate` 输出契约（防止改造破坏老消息格式） |
+| `test_transport.py` | relay 非文本/超长消息拒绝、超长 payload 不创建 OpenClaw subprocess、同 session label 并发调用串行化 |
 
 ### 仿客户端 E2E 测试（无需真实客户端 APP）
 

@@ -145,6 +145,11 @@ def wrap_user_message(message: str) -> str:
     return EMOTION_PROMPT.replace("{message}", message)
 
 
+def is_valid_relay_content(content) -> bool:
+    """Return True only for relay message payloads that may reach OpenClaw."""
+    return isinstance(content, str) and len(content) <= MAX_MESSAGE_LENGTH
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # Relay 凭证
 # ──────────────────────────────────────────────────────────────────────────
@@ -466,7 +471,7 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
     relay_ws_url = f"{ws_url}/ws/openclaw?token={token}"
 
     async def handle_message(relay_ws, content, sender):
-        if not isinstance(content, str) or len(content) > MAX_MESSAGE_LENGTH:
+        if not is_valid_relay_content(content):
             print(f"[!] 丢弃非法消息 from {sender}")
             return
 
