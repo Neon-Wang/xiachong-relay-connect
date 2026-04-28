@@ -140,6 +140,11 @@ EMOTION_PROMPT = (
 )
 
 
+def wrap_user_message(message: str) -> str:
+    """Wrap user text without interpreting braces inside the user payload."""
+    return EMOTION_PROMPT.replace("{message}", message)
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # Relay 凭证
 # ──────────────────────────────────────────────────────────────────────────
@@ -468,7 +473,7 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
         print(f"[<-] {sender}: {content}")
 
         if transport is not None:
-            wrapped = EMOTION_PROMPT.format(message=content)
+            wrapped = wrap_user_message(content)
             try:
                 raw_reply = await transport.send(wrapped, label=label)
             except TransportError as e:

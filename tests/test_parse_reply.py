@@ -88,3 +88,11 @@ def test_truncate_long_text_appends_ellipsis(connector):
     truncated = connector._truncate(long, limit=50)
     assert truncated.endswith("…")
     assert len(truncated) < 100
+
+
+def test_wrap_user_message_preserves_literal_braces(connector):
+    raw = "请解释 {foo}、单独左括号 { 和右括号 } 的含义"
+    wrapped = connector.wrap_user_message(raw)
+
+    assert raw in wrapped
+    assert "USER.md里写的用户说：" in wrapped
