@@ -153,6 +153,33 @@ describe("pairWithRelay", () => {
     ).rejects.toThrow(/relay \/api\/link failed \(status=400\)/);
   });
 
+  it("clears stored agent_token when relay reports the link is unbound", async () => {
+    await __internal.writeStoredCredentials(stateDir, "default", {
+      agentToken: "d".repeat(64),
+      agentId: "stale-agent",
+      updatedAt: 1,
+    });
+    const fakeFetch = async (url: string | URL): Promise<Response> => {
+      if (String(url).endsWith("/api/agent-auth")) {
+        return new Response(JSON.stringify({ error: "revoked" }), { status: 401 });
+      }
+      return new Response(JSON.stringify({ error: "Device unbound" }), { status: 410 });
+    };
+
+    await expect(
+      pairWithRelay({
+        accountId: "default",
+        relayUrl: "https://relay.example",
+        linkCode: "CODE",
+        secret: "SECRET",
+        stateDir,
+        fetchImpl: fakeFetch as unknown as typeof fetch,
+      }),
+    ).rejects.toThrow(/relay \/api\/link failed \(status=410\)/);
+
+    expect(await __internal.readStoredCredentials(stateDir, "default")).toBeNull();
+  });
+
   it("forgetStoredAgentToken removes the state file", async () => {
     await __internal.writeStoredCredentials(stateDir, "default", {
       agentToken: "c".repeat(64),

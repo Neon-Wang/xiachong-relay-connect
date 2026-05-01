@@ -48,8 +48,7 @@ OpenClaw-side device observability + unbind-aware reconnect logic.
 ## [0.1.1] — 2026-04-22
 
 Security hardening release. Closes the gaps surfaced by the Phase-2
-connector security audit (see
-[`docs/specs/openclaw-hooks-integration/connector-security-audit-2026-04-22.md`](../../docs/specs/openclaw-hooks-integration/connector-security-audit-2026-04-22.md)).
+connector security audit summarized in the handover notes.
 No protocol-breaking changes; Electron client and Workers relay need no
 update.
 

@@ -2,7 +2,7 @@
 
 > **看这篇的人**：在自己的机器（Linux / macOS / Windows）上跑 OpenClaw、想接入 EvoPaimo 桌面宠物的最终用户。
 >
-> **不看这篇的人**：插件维护者（看 [`PUBLISHING.md`](./PUBLISHING.md)）、想了解架构与安全细节的开发者（看 [`README.md`](./README.md)）。
+> **不看这篇的人**：插件维护者（看 [`PUBLISHING.md`](./PUBLISHING.md)）、想了解架构与安全细节的开发者（看 [`README.md`](./connector-channel-plugin-README.md)）。
 
 全程预计 5 分钟。如果某一步卡住，跳到本文末尾的【故障排查】。
 
@@ -171,7 +171,7 @@ OpenClaw CLI 会：
 openclaw plugins install --force ./evopaimo-channel.tgz
 ```
 
-> ⚠️ 如果之前装过 0.1.0 preview 版又把插件文件夹手动删了，重装时可能报 `Invalid config: channels.evopaimo: unknown channel id: evopaimo`。处理办法见 [README.md › Re-install gotcha](./README.md#re-install-gotcha)。
+> ⚠️ 如果之前装过 0.1.0 preview 版又把插件文件夹手动删了，重装时可能报 `Invalid config: channels.evopaimo: unknown channel id: evopaimo`。处理办法见 [README.md › Re-install gotcha](./connector-channel-plugin-README.md#re-install-gotcha)。
 
 ---
 
@@ -286,7 +286,7 @@ tail -F ~/.openclaw/logs/gateway.log
 
 ### 8.1 `openclaw plugins install` 报 `Invalid config: channels.evopaimo: unknown channel id`
 
-之前装过 0.1.0 preview 又把 `~/.openclaw/extensions/evopaimo/` 删了，但 `openclaw.json` 的 `channels.evopaimo` 还在。处理脚本见 [README.md › Re-install gotcha](./README.md#re-install-gotcha)。
+之前装过 0.1.0 preview 又把 `~/.openclaw/extensions/evopaimo/` 删了，但 `openclaw.json` 的 `channels.evopaimo` 还在。处理脚本见 [README.md › Re-install gotcha](./connector-channel-plugin-README.md#re-install-gotcha)。
 
 ### 8.2 启动时直接退出 + `relayUrl must use https:// scheme`
 
@@ -331,7 +331,7 @@ journalctl --user -u openclaw-gateway --since "5 minutes ago" | grep evopaimo
 
 ### 8.7 `openclaw security audit` 报 `channels.evopaimo.dm.open` CRITICAL
 
-`openclaw.json` 的 `channels.evopaimo` 段没写 `"allowFrom": ["*"]`。回到 §5 的模板补上。这不是插件本身的安全漏洞——见 [README.md › Security › Known false positive](./README.md#security)。
+`openclaw.json` 的 `channels.evopaimo` 段没写 `"allowFrom": ["*"]`。回到 §5 的模板补上。这不是插件本身的安全漏洞——见 [README.md › Security › Known false positive](./connector-channel-plugin-README.md#security)。
 
 ### 8.8 想跑攻击模拟自检（不必要，但可选）
 
@@ -387,7 +387,7 @@ rm -rf ~/.openclaw/channels/evopaimo/
 
 ## 还有问题？
 
-- 看 [`README.md`](./README.md) — 架构、安全模型、内部模块
+- 看 [`README.md`](./connector-channel-plugin-README.md) — 架构、安全模型、内部模块
 - 看 [`CHANGELOG.md`](./CHANGELOG.md) — 历次改动
 - 提 issue：https://github.com/EvoMap/XiaChong/issues
 - 安全问题（unfixed CVE）：`security@evomap.ai`，**请勿** 公开开 issue

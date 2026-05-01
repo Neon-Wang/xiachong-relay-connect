@@ -28,7 +28,7 @@ import {
  * terminal ones the plugin should react to — everything else falls
  * through to the generic reconnect path.
  */
-const WS_CLOSE_UNBOUND = 4004;
+export const WS_CLOSE_UNBOUND = 4004;
 
 export type WsClientLogger = {
   debug?: (message: string, meta?: Record<string, unknown>) => void;

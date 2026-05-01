@@ -11,7 +11,7 @@
 // Exit code 0 = every attack was correctly rejected.
 // Exit code != 0 = at least one attack got past the connector.
 
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve } from "node:path";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,7 +30,7 @@ if (process.env.EVOPAIMO_DIST) {
   distPath = resolve(__dirname, "..", "dist", "internals.js");
 }
 
-const dist = await import(distPath);
+const dist = await import(pathToFileURL(distPath).href);
 const {
   parseInboundFrame,
   sanitizeFromField,

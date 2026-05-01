@@ -43,6 +43,7 @@ import {
 } from "./pairing.js";
 import {
   RelayWsClient,
+  WS_CLOSE_UNBOUND,
   type TokenResolver,
   type WsClientLogger,
 } from "./ws-client.js";
@@ -262,6 +263,27 @@ class EvoPaimoAccountRuntime {
     reason?: string;
     authRejected?: boolean;
   }): void {
+    if (info.code === WS_CLOSE_UNBOUND) {
+      void forgetStoredAgentToken({
+        accountId: this.accountId,
+      });
+      this.updateStatus({
+        running: false,
+        connected: false,
+        lastStopAt: Date.now(),
+        lastError: info.reason || "device unbound",
+        healthState: "unbound",
+        lastDisconnect: {
+          at: Date.now(),
+          status: info.code,
+          error: info.reason || "device unbound",
+        },
+      });
+      REGISTRY.delete(this.accountId);
+      this.resolveDone();
+      return;
+    }
+
     const tag = info.authRejected ? "auth-rejected" : "disconnected";
     const lastDisconnect = {
       at: Date.now(),

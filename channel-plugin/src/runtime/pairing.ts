@@ -361,6 +361,13 @@ export async function pairWithRelay(opts: PairingOptions): Promise<PairingResult
     fetchImpl,
   );
   if (!linkRes.ok || !linkRes.data?.token) {
+    if (linkRes.status === 410) {
+      await forgetStoredAgentToken({
+        accountId: opts.accountId,
+        stateDir,
+        logger,
+      });
+    }
     throw new Error(
       `relay /api/link failed (status=${linkRes.status}): ${linkRes.errorDetail ?? "unknown"}`,
     );

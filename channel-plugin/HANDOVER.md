@@ -81,7 +81,7 @@ openclaw plugins install ./evopaimo-channel.tgz
 # openclaw plugins install --force ./evopaimo-channel.tgz
 ```
 
-> ⚠️ **0.1.0 重装陷阱**：如果之前装过 0.1.0 preview 又把 `~/.openclaw/extensions/evopaimo/` 手动删了，但 `openclaw.json` 还留着 `channels.evopaimo`，会报 `Invalid config: channels.evopaimo: unknown channel id`。处置脚本见 [`README.md › Re-install gotcha`](./README.md#re-install-gotcha)。
+> ⚠️ **0.1.0 重装陷阱**：如果之前装过 0.1.0 preview 又把 `~/.openclaw/extensions/evopaimo/` 手动删了，但 `openclaw.json` 还留着 `channels.evopaimo`，会报 `Invalid config: channels.evopaimo: unknown channel id`。处置脚本见 [`README.md › Re-install gotcha`](./connector-channel-plugin-README.md#re-install-gotcha)。
 
 ### Step 3 — 拿 `linkCode + secret`（来自 Electron 客户端）
 
@@ -372,7 +372,7 @@ Invalid config: channels.evopaimo: unknown channel id: evopaimo
 
 **为什么**：OpenClaw `plugins install` 在写新 plugin 文件**之前**先做配置校验。配置里引用了 `evopaimo` 但插件目录已经被删，校验过不去。
 
-**处置**：先临时移除 `channels.evopaimo`、装完再加回来。完整脚本见 [`README.md › Re-install gotcha`](./README.md#re-install-gotcha)。
+**处置**：先临时移除 `channels.evopaimo`、装完再加回来。完整脚本见 [`README.md › Re-install gotcha`](./connector-channel-plugin-README.md#re-install-gotcha)。
 
 ### 5.5 `agent_token` 持久化位置（升级要兼容）
 
@@ -589,7 +589,7 @@ npm view @evopaimo/channel version    # 期望: 0.1.2
 
 ### 7.3 `openclaw plugins install` 失败：`Invalid config: channels.evopaimo: unknown channel id`
 
-[§5.4](#54-010--011-重装陷阱) 经典陷阱。处置脚本：[`README.md › Re-install gotcha`](./README.md#re-install-gotcha)。
+[§5.4](#54-010--011-重装陷阱) 经典陷阱。处置脚本：[`README.md › Re-install gotcha`](./connector-channel-plugin-README.md#re-install-gotcha)。
 
 ### 7.4 启动直接退出 + `relayUrl must use https://`
 
@@ -665,10 +665,10 @@ export CLOUDFLARE_ACCOUNT_ID=7a3d6232d52a3cb9123ceee7e5538edf
 | 文档 | 用途 |
 |---|---|
 | [`INSTALL.md`](./INSTALL.md) | 用户视角的安装/配置/排查手册（端到端 5 分钟教程） |
-| [`README.md`](./README.md) | 插件本身的架构、内部模块、安全模型 |
+| [`README.md`](./connector-channel-plugin-README.md) | 插件本身的架构、内部模块、安全模型 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 历次版本改动 |
 | [`PUBLISHING.md`](./PUBLISHING.md) | 历史 npm 发版手册（**当前 PENDING 不可执行**，重启时反向打开 §6 后再读） |
-| [`../README.md`](../README.md) | Connector 总览（CLI 模式 vs 插件模式对比） |
+| [`../README.md`](../connector-README.md) | Connector 总览（CLI 模式 vs 插件模式对比） |
 | [`../RELEASE.md`](../RELEASE.md) | Connector 历史发版手册（**npm 部分 PENDING**，R2/GitHub mirror 部分仍有效） |
 | [`../NPM_ONBOARDING.md`](../NPM_ONBOARDING.md) | 给一次性首发同事的 onboarding（**PENDING 不安排**） |
 | [`../PERSISTENT_SETUP.md`](../PERSISTENT_SETUP.md) | CLI 模式的持久化部署（systemd / launchd） |

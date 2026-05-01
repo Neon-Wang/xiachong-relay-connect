@@ -124,6 +124,7 @@ else:
 
 DEFAULT_SESSION_LABEL = os.getenv("OPENCLAW_SESSION_LABEL", "mobile-app")
 DEFAULT_AGENT_FILE = os.path.expanduser("~/.config/evopaimo/agent.json")
+WS_CLOSE_UNBOUND = 4004
 
 VALID_EMOTIONS = {"speechless", "angry", "shy", "sad", "happy", "neutral"}
 
@@ -173,6 +174,22 @@ def save_agent_file(path: str, agent_token: str, agent_id: str):
     print(f"[OK] Agent 凭证已保存: {path}")
 
 
+def remove_agent_file(path: str):
+    try:
+        os.remove(path)
+        print(f"[OK] 已清除失效 Agent 凭证: {path}")
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        print(f"[!] 清除 Agent 凭证失败: {e}")
+
+
+class RelayPairingError(Exception):
+    def __init__(self, status_code: int, message: str):
+        super().__init__(message)
+        self.status_code = status_code
+
+
 def do_agent_auth(relay_url: str, agent_token: str) -> dict:
     res = requests.post(
         f"{relay_url}/api/agent-auth",
@@ -185,7 +202,7 @@ def do_agent_auth(relay_url: str, agent_token: str) -> dict:
             detail = body.get("error") or body.get("detail") or res.text
         except Exception:
             detail = res.text
-        raise Exception(f"Agent 认证失败: {detail}")
+        raise RelayPairingError(res.status_code, f"Agent 认证失败: {detail}")
     return res.json()
 
 
@@ -204,7 +221,7 @@ def do_link(relay_url: str, link_code: str, secret: str, agent_token: str | None
             detail = body.get("error") or body.get("detail") or res.text
         except Exception:
             detail = res.text
-        raise Exception(f"绑定失败: {detail}")
+        raise RelayPairingError(res.status_code, f"绑定失败: {detail}")
     return res.json()
 
 
@@ -442,6 +459,12 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
             app_id = result["app_id"]
             agent_id = result.get("agent_id", agent_data.get("agent_id", ""))
             print(f"[OK] Agent 认证成功，Agent ID: {agent_id}")
+        except RelayPairingError as e:
+            print(f"[!] Agent Token 认证失败: {e}")
+            if e.status_code == 410:
+                remove_agent_file(agent_file)
+            print(f"[!] 回退到 Link Code 配对模式...")
+            agent_data = None
         except Exception as e:
             print(f"[!] Agent Token 认证失败: {e}")
             print(f"[!] 回退到 Link Code 配对模式...")
@@ -450,7 +473,14 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
     if not agent_data or not agent_data.get("agent_token"):
         print(f"[*] 首次配对，绑定到中转服务器: {relay_url}")
         agent_token = secrets.token_hex(32)
-        result = do_link(relay_url, link_code, secret, agent_token=agent_token)
+        try:
+            result = do_link(relay_url, link_code, secret, agent_token=agent_token)
+        except RelayPairingError as e:
+            if e.status_code == 410:
+                remove_agent_file(agent_file)
+                print("[!] 当前设备已解绑，请在 EvoPaimo 客户端重新绑定 OpenClaw 后再启动 connector。")
+                return
+            raise
         token = result["token"]
         app_id = result["app_id"]
         agent_id = result.get("agent_id", "")
@@ -468,7 +498,29 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
     print(f"[OK] 会话标签: {label}")
 
     ws_url = relay_url.replace("https://", "wss://").replace("http://", "ws://")
-    relay_ws_url = f"{ws_url}/ws/openclaw?token={token}"
+    def refresh_ws_token(reason: str) -> bool:
+        nonlocal token, app_id, agent_id
+        print(f"[*] WebSocket 鉴权失效，刷新 relay token: {reason}")
+        stored = load_agent_file(agent_file)
+        try:
+            if stored and stored.get("agent_token"):
+                result = do_agent_auth(relay_url, stored["agent_token"])
+            else:
+                new_agent_token = secrets.token_hex(32)
+                result = do_link(relay_url, link_code, secret, agent_token=new_agent_token)
+                save_agent_file(agent_file, new_agent_token, result.get("agent_id", ""))
+            token = result["token"]
+            app_id = result["app_id"]
+            agent_id = result.get("agent_id", agent_id)
+            print(f"[OK] relay token 已刷新，Agent ID: {agent_id}")
+            return True
+        except RelayPairingError as e:
+            if e.status_code == 410:
+                remove_agent_file(agent_file)
+                print("[!] 当前设备已解绑，请在 EvoPaimo 客户端重新绑定 OpenClaw 后再启动 connector。")
+                return False
+            print(f"[!] relay token 刷新失败: {e}")
+            return False
 
     async def handle_message(relay_ws, content, sender):
         if not is_valid_relay_content(content):
@@ -505,6 +557,7 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
     while True:
         try:
             print(f"[*] 连接中转服务器...")
+            relay_ws_url = f"{ws_url}/ws/openclaw?token={token}"
             async with websockets.connect(relay_ws_url, ping_interval=None) as relay_ws:
                 print(f"[OK] 已连接，等待客户端消息...\n")
                 backoff = 1
@@ -574,9 +627,23 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
                     done = {t for t in pending_tasks if t.done()}
                     pending_tasks -= done
 
-        except websockets.ConnectionClosed:
+        except websockets.ConnectionClosed as e:
+            if getattr(e, "code", None) == WS_CLOSE_UNBOUND:
+                remove_agent_file(agent_file)
+                print("\n[!] 设备已被解绑，connector 已停止重连。请重新绑定后再启动。")
+                return
             print(f"\n[!] 断开，{backoff:.0f}s 后重连...")
         except Exception as e:
+            status_code = getattr(e, "status_code", None) or getattr(
+                getattr(e, "response", None),
+                "status_code",
+                None,
+            )
+            if status_code in (401, 403):
+                if refresh_ws_token(f"HTTP {status_code}"):
+                    backoff = 1
+                    continue
+                return
             print(f"\n[!] 错误: {e}，{backoff:.0f}s 后重连...")
 
         await asyncio.sleep(backoff)
