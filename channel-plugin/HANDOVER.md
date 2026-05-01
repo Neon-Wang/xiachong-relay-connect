@@ -284,7 +284,7 @@ curl -i "https://xiachong-api.aged-sea-ee35.workers.dev/channel-plugin/../../../
 |---|---|---|
 | `.github/workflows/publish-channel-plugin.yml` | push 到 `main` 改 `connector/channel-plugin/**` 或打 `channel-plugin-v*` tag | 跑测试 + 上传 R2 + 创 GitHub Release。**npm publish step 已注释**（§6） |
 | `.github/workflows/publish-connectors.yml` | push 到 `main` 改 `connector/**`（除 channel-plugin） | sync 到 `Neon-Wang/xiachong-relay-connect` + R2 上传 `evopaimo-connect.py`。**npm publish step 已注释**（§6） |
-| `.github/workflows/deploy-workers.yml` | push 改 `workers/**` | typecheck + test + deploy 到 staging（merge `main` 时自动 prod） |
+| `.github/workflows/deploy-workers.yml` | push 改 `workers/**` / `avatar-gen-server/**` 或打 `workers-v*` tag | typecheck + test；main push 自动 deploy staging，`workers-v*` tag 或手动 workflow_dispatch 才 deploy production |
 
 ### 4.2 关键代码 / 配置文件
 

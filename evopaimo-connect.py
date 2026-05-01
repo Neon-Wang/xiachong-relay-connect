@@ -79,6 +79,7 @@ import shutil
 import sys
 import uuid
 from typing import Literal, Protocol
+from urllib.parse import urlparse
 
 # ── 依赖检查：友好报错而非 traceback ──────────────────────────────────────
 _missing_deps = []
@@ -113,6 +114,10 @@ if _missing_deps:
 
 # ── 常量 ──────────────────────────────────────────────────────────────────
 MAX_MESSAGE_LENGTH = 50000
+MAX_INIT_PROMPTS_PER_REQUEST = 32
+MAX_INIT_PROMPT_LENGTH = 32000
+MAX_AGENT_ID_LENGTH = 64
+SAFE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 # OPENCLAW_CLI 环境变量校验
 # 某些环境下可能被污染为 "1" 等无效值，此处做防御性处理
@@ -149,6 +154,67 @@ def wrap_user_message(message: str) -> str:
 def is_valid_relay_content(content) -> bool:
     """Return True only for relay message payloads that may reach OpenClaw."""
     return isinstance(content, str) and len(content) <= MAX_MESSAGE_LENGTH
+
+
+def parse_relay_frame(raw: str) -> dict | None:
+    """Parse a relay frame and drop invalid/non-object JSON."""
+    try:
+        msg = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(msg, dict):
+        return None
+    return msg
+
+
+def validate_relay_url(relay_url: str) -> str:
+    """Return a normalized HTTPS relay URL or raise ValueError."""
+    if not isinstance(relay_url, str):
+        raise ValueError("relay URL must be an https:// URL")
+    normalized = relay_url.strip().rstrip("/")
+    parsed = urlparse(normalized)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError("relay URL must be an https:// URL")
+    if parsed.username or parsed.password:
+        raise ValueError("relay URL must not include credentials")
+    return normalized
+
+
+def validate_init_request_frame(frame: dict) -> dict:
+    """Validate an inbound soul init request before it reaches OpenClaw."""
+    agent_id = frame.get("agent_id")
+    if not isinstance(agent_id, str):
+        raise ValueError("init_request.agent_id missing or not a string")
+    if not agent_id or len(agent_id) > MAX_AGENT_ID_LENGTH:
+        raise ValueError("init_request.agent_id length out of bounds")
+    if not SAFE_ID_PATTERN.fullmatch(agent_id):
+        raise ValueError("init_request.agent_id contains disallowed characters")
+
+    prompts = frame.get("prompts")
+    if not isinstance(prompts, list):
+        raise ValueError("init_request.prompts must be an array")
+    if len(prompts) > MAX_INIT_PROMPTS_PER_REQUEST:
+        raise ValueError("init_request too many prompts")
+
+    for i, prompt_item in enumerate(prompts):
+        if not isinstance(prompt_item, dict):
+            raise ValueError(f"init_request.prompts[{i}] must be an object")
+        prompt_text = prompt_item.get("prompt")
+        if not isinstance(prompt_text, str):
+            raise ValueError(f"init_request.prompts[{i}].prompt must be a string")
+        if len(prompt_text) > MAX_INIT_PROMPT_LENGTH:
+            raise ValueError(f"init_request.prompts[{i}].prompt too long")
+        expect = prompt_item.get("expect")
+        if expect is not None:
+            if not isinstance(expect, str):
+                raise ValueError(f"init_request.prompts[{i}].expect must be a string")
+            if len(expect) > MAX_INIT_PROMPT_LENGTH:
+                raise ValueError(f"init_request.prompts[{i}].expect too long")
+        step = prompt_item.get("step")
+        if step is not None and (isinstance(step, bool) or not isinstance(step, (int, float))):
+            raise ValueError(f"init_request.prompts[{i}].step must be a number")
+
+    return frame
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -448,6 +514,8 @@ def parse_reply(raw: str) -> tuple[str, str, str]:
 # ──────────────────────────────────────────────────────────────────────────
 
 async def run(relay_url: str, link_code: str, secret: str, label: str, agent_file: str):
+    relay_url = validate_relay_url(relay_url)
+
     # Dual-mode auth: try agent_token first, fall back to link_code pairing
     agent_data = load_agent_file(agent_file)
 
@@ -564,10 +632,9 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
                 pending_tasks: set[asyncio.Task] = set()
 
                 async for raw in relay_ws:
-                    try:
-                        msg = json.loads(raw)
-                    except json.JSONDecodeError:
-                        print(f"[!] 收到无效 JSON，忽略: {raw[:100]}")
+                    msg = parse_relay_frame(raw)
+                    if msg is None:
+                        print(f"[!] 收到无效 relay frame，忽略: {str(raw)[:100]}")
                         continue
                     msg_type = msg.get("type")
 
@@ -576,6 +643,12 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
                         continue
 
                     if msg_type == "init_request":
+                        try:
+                            msg = validate_init_request_frame(msg)
+                        except ValueError as e:
+                            print(f"[!] 拒绝无效 init_request: {e}")
+                            continue
+
                         async def handle_init(ws, init_msg):
                             agent_id = init_msg.get("agent_id", "")
                             prompts = init_msg.get("prompts", [])

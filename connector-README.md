@@ -90,6 +90,8 @@
 - 只允许 `text` / `markdown` 类型消息通过，长度上限 50KB
 - 非白名单消息直接丢弃
 - connector 端用 `MAX_MESSAGE_LENGTH = 50000` 二次校验
+- connector 端只接受 `https://` relay URL；不会把 link code、secret、agent token 发送到明文 HTTP/WS 通道
+- `init_request` 在进入 OpenClaw 前会校验 `agent_id`、prompt 数量、prompt/expect 长度与 step 类型，避免 relay 异常帧造成 token 洪泛或日志/路径注入
 - `subprocess.create_subprocess_exec()` 以参数列表形式传参（非 `shell=True`），杜绝命令注入
 
 **依赖最小化**：
@@ -101,7 +103,7 @@
 
 - 全部代码集中在单个 Python 文件中（约 680 行），可在 5-10 分钟内完成人工审阅
 - 文件头部包含完整的安全声明，供 AI Agent 和人工审计系统参考
-- `connector/tests/` 覆盖回复解析、relay 消息二次校验和同 session CLI 串行化，保证消息契约稳定并避免 OpenClaw `<label>.jsonl.lock` 争锁
+- `connector/tests/` 覆盖回复解析、relay URL / `init_request` / 非对象 relay frame / 消息二次校验和同 session CLI 串行化，保证消息契约稳定并避免 OpenClaw `<label>.jsonl.lock` 争锁
 
 ---
 
@@ -137,7 +139,7 @@ python3 -u evopaimo-connect.py status
 
 | 参数 | 必填 | 说明 |
 |------|------|------|
-| `--relay` | 是 | 中转服务器地址 |
+| `--relay` | 是 | 中转服务器地址；必须是 `https://` URL |
 | `--link-code` | 是（首次） | 客户端 App 生成的 Link Code |
 | `--secret` | 是（首次） | 客户端 App 生成的 Secret |
 | `--label` | 否 | OpenClaw 会话标签，用于隔离上下文（默认: `mobile-app`） |

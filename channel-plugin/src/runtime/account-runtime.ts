@@ -69,7 +69,7 @@ const CHANNEL_ID = "evopaimo";
 function readPluginVersion(): string | undefined {
   try {
     const req = createRequire(import.meta.url);
-    const pkg = req("../../package.json") as { version?: string };
+    const pkg = req("../package.json") as { version?: string };
     return typeof pkg.version === "string" ? pkg.version : undefined;
   } catch {
     return undefined;

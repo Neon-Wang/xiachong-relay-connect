@@ -184,6 +184,9 @@ export function parseInboundFrame(raw: string | Buffer): InboundFrame {
             `(got=${p.prompt.length}, max=${MAX_INIT_PROMPT_LENGTH})`,
         );
       }
+      if (typeof p.expect !== "undefined" && typeof p.expect !== "string") {
+        throw new Error(`EvoPaimo: init_request.prompts[${i}].expect must be a string`);
+      }
       if (
         typeof p.expect === "string" &&
         p.expect.length > MAX_INIT_PROMPT_LENGTH

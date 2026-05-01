@@ -8,6 +8,16 @@ Dates are UTC (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed installed channel plugin device reporting so `plugin_version` is
+  read from the packaged `package.json` next to `dist/`, allowing the
+  website's client connection page to show the actual EvoPaimo plugin
+  version instead of a blank value.
+- Tightened `init_request.prompts[].expect` parsing so non-string values
+  are rejected instead of being silently treated as empty, keeping the
+  channel plugin aligned with the Python connector wire contract.
+
 ## [0.1.2] — 2026-04-23
 
 OpenClaw-side device observability + unbind-aware reconnect logic.

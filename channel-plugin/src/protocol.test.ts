@@ -56,6 +56,18 @@ describe("protocol.parseInboundFrame", () => {
       parseInboundFrame(JSON.stringify({ type: "message", content: huge })),
     ).toThrowError(/message too long/);
   });
+
+  it("rejects init_request prompts with non-string expect", () => {
+    expect(() =>
+      parseInboundFrame(
+        JSON.stringify({
+          type: "init_request",
+          agent_id: "agent-abc",
+          prompts: [{ step: 0, prompt: "first step prompt", expect: { shape: "bad" } }],
+        }),
+      ),
+    ).toThrowError(/expect must be a string/);
+  });
 });
 
 describe("protocol.normalizeEmotion", () => {

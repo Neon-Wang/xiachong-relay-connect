@@ -253,7 +253,7 @@ the connector**, not inside the relay.
 |---|---|---|
 | `relayUrl` must be `https://` with a host | `src/config.ts` `validateRelayUrlScheme` | `http://attacker.evil/`, `ws://`, `file://`, `javascript:` — any cleartext or local-scheme path that would leak `linkCode + secret` |
 | `init_request.prompts.length ≤ 32` | `src/protocol.ts` `parseInboundFrame` | Memory-exhaustion DoS via `prompts: Array(10_000_000)` |
-| Each `prompt` / `expect` ≤ 32 KB | same | Memory exhaustion via 1 GB single string |
+| Each `prompt` / `expect` must be a string and ≤ 32 KB | same | Memory exhaustion via 1 GB single string or schema drift via object/array payloads |
 | `agent_id` matches `^[A-Za-z0-9_.\-]+$`, length ≤ 64 | same | Log injection (`alice\n[FAKE]`), path traversal (`../../etc/passwd`), shell metacharacters |
 | `message.content` ≤ 50 KB | same | Memory exhaustion |
 | Unknown frame `type` rejected | same | `{type:"execute_shell"}` probing for future commands |

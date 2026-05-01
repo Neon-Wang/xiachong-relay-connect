@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { evopaimoPlugin, resolveAccount } from "./channel.js";
 
@@ -102,5 +104,13 @@ describe("evopaimo channel plugin — M1 skeleton", () => {
 
   it("outbound.deliveryMode is 'direct'", () => {
     expect(evopaimoPlugin.outbound?.deliveryMode).toBe("direct");
+  });
+
+  it("reads plugin version from the package.json next to installed dist", () => {
+    const runtimeSource = readFileSync(
+      fileURLToPath(new URL("./runtime/account-runtime.ts", import.meta.url)),
+      "utf8",
+    );
+    expect(runtimeSource).toContain('req("../package.json")');
   });
 });
