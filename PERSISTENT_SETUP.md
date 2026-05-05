@@ -24,9 +24,9 @@
 
 ## 通信模式（一句话）
 
-connector 1.3+ 通过 `subprocess.create_subprocess_exec()` 调用 `openclaw agent --session-id <label> --message <text>` 把消息交给本地 OpenClaw。**这是当前唯一支持的模式**。`openclaw` 必须在 PATH 中（或通过 `OPENCLAW_CLI` 环境变量指定绝对路径），找不到时 connector 仍会启动但只能以 echo 模式回显消息。
+Channel Plugin 是当前推荐主路径；本 SOP 只覆盖 CLI Connector 的兼容 / 保底部署。connector 1.3+ 通过 `subprocess.create_subprocess_exec()` 调用 `openclaw agent --session-id <label> --message <text>` 把消息交给本地 OpenClaw。`openclaw` 必须在 PATH 中（或通过 `OPENCLAW_CLI` 环境变量指定绝对路径），找不到时 connector 仍会启动但只能以 echo 模式回显消息。
 
-> **历史背景**：1.2.x 曾尝试加入"hooks 模式"作为 HTTP 通道，后发现 OpenClaw 在 `127.0.0.1:18789` 跑的是 Web Control UI 而非 hooks server——这一通道不存在。1.3.0 已删除全部 hooks 相关代码。详细复盘见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)。Phase 2 规划是落到 OpenClaw 官方 channel 插件，参见 [`docs/specs/openclaw-hooks-integration/phase-2-roadmap.md`](../docs/specs/openclaw-hooks-integration/phase-2-roadmap.md)。
+> **历史背景**：1.2.x 曾尝试加入"hooks 模式"作为 HTTP 通道，后发现 OpenClaw 在 `127.0.0.1:18789` 跑的是 Web Control UI 而非 hooks server——这一通道不存在。1.3.0 已删除全部 hooks 相关代码。详细复盘见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)。后续主线已落到 OpenClaw channel plugin；本 CLI SOP 只用于不能安装插件的环境。
 
 ---
 
@@ -609,7 +609,7 @@ connector 调用的接口是 `openclaw agent --session-id <label> --message <tex
 - OpenClaw 26.x+：完全兼容
 - OpenClaw 25.x：注意 `--session-id` 在部分小版本叫 `--label`，如遇报错先查 `openclaw agent --help`
 - OpenClaw < 25.x：不保证兼容，建议升级
-- 第三方托管 OpenClaw（如 Kimi 服务化部署）：看实现是否允许子进程；不允许的话当前版本无法工作（等 Phase 2 channel plugin）
+- 第三方托管 OpenClaw（如 Kimi 服务化部署）：优先尝试 Channel Plugin；如果宿主不允许装插件但允许子进程，再退回本 CLI Connector 持久化方案。
 
 OpenClaw CLI 必须能 fork 子进程——一些极简容器禁用 fork，会直接报 PermissionError。
 

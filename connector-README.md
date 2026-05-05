@@ -1,6 +1,6 @@
 # EvoPaimo Connector
 
-> EvoPaimo 桌面宠物与 OpenClaw 之间的中继连接层。现在有**两条平行路径**——根据部署场景二选一。
+> EvoPaimo 桌面宠物与 OpenClaw 之间的中继连接层。当前主路径是 **OpenClaw Channel Plugin**；Python CLI Connector 仍保留为不能安装插件时的兼容 / 保底路径。
 
 ## 两种模式：选哪个？
 
@@ -10,8 +10,8 @@
 | 运行位置 | 独立进程（用户手动或 systemd 拉起） | OpenClaw gateway 宿主进程内（插件） |
 | 调用 OpenClaw 的方式 | `subprocess.create_subprocess_exec("openclaw agent --message …")` | `channelRuntime.reply.recordInboundSessionAndDispatchReplyWithBase()`（SDK） |
 | 对用户的部署负担 | 装 Python + `curl` 脚本 + 改 PATH | `curl` 拉 tarball + `openclaw plugins install ./xxx.tgz` + 改 `~/.openclaw/openclaw.json` |
-| 稳定性 | ✅ 2026-04-22 v1.3.0 上线（CLI 主线路） | ✅ 2026-04-22 Phase 2 VM 端到端绿灯 |
-| 推荐场景 | 用户自管的 OpenClaw / 不能装插件的托管 OpenClaw | 用户自管的 OpenClaw（升级体验更好、原生观测） |
+| 稳定性 | ✅ 2026-04-22 v1.3.0 上线（兼容 / 保底路径） | ✅ 2026-04-22 Phase 2 VM 端到端绿灯（推荐主路径） |
+| 推荐场景 | 不能安装插件的托管 OpenClaw、受限环境、临时救火 | 用户自管的 OpenClaw（升级体验更好、原生观测） |
 
 两条路径**共用同一个 Workers relay 和 Electron 客户端**，切换时不需要迁移凭证：插件首次运行会自己跑 `/api/link` 再持久化到 `~/.openclaw/channels/evopaimo/state-default.json`。
 
@@ -22,7 +22,7 @@
 >
 > GitHub 镜像仓库：`Neon-Wang/xiachong-relay-connect`（仓库名沿用旧名，因为重命名会破坏已存在的 git remote）。
 >
-> 本 README **只讲 CLI 模式**。Channel 插件模式直接看 [`channel-plugin/README.md`](./channel-plugin/connector-channel-plugin-README.md)，端到端连接流程看 [`channel-plugin/HANDOVER.md`](./channel-plugin/HANDOVER.md)。
+> 本 README **只讲 CLI 兼容模式**。新用户应优先阅读 [`channel-plugin/README.md`](./channel-plugin/connector-channel-plugin-README.md)，端到端连接流程看 [`channel-plugin/HANDOVER.md`](./channel-plugin/HANDOVER.md)。
 
 ---
 
@@ -61,7 +61,7 @@
 - 不包含任何远程代码执行（RCE）后门
 - 不从网络下载或动态执行任何代码
 
-> **历史背景**：1.2.x 版本曾尝试引入"hooks 模式"作为 CLI 的并行通道（`POST 127.0.0.1:18789/hooks/agent`），后发现该端点不存在——18789 是 OpenClaw Web Control UI 的 SPA，OpenClaw 的 `hooks` 概念是本地 lifecycle 脚本，不是 HTTP 端点。详细复盘见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)。1.3.0 已彻底回退，只保留 CLI 模式；下一步规划是落到 OpenClaw 官方 channel 插件，参见 [`docs/specs/openclaw-hooks-integration/phase-2-roadmap.md`](../docs/specs/openclaw-hooks-integration/phase-2-roadmap.md)。
+> **历史背景**：1.2.x 版本曾尝试引入"hooks 模式"作为 CLI 的并行通道（`POST 127.0.0.1:18789/hooks/agent`），后发现该端点不存在——18789 是 OpenClaw Web Control UI 的 SPA，OpenClaw 的 `hooks` 概念是本地 lifecycle 脚本，不是 HTTP 端点。详细复盘见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md)。1.3.0 已彻底回退到 CLI；现在正式推荐路径已转为 OpenClaw channel plugin，CLI 只作为不能安装插件时的兼容 / 保底方案。
 
 ---
 
@@ -349,8 +349,15 @@ curl -sS -X POST http://127.0.0.1:11453/exec \
 `connector/scripts/evopaimo-relay.service` 是生产环境部署参考。使用方式：
 
 ```bash
+mkdir -p ~/.config/evopaimo
+cat > ~/.config/evopaimo/relay.env <<'EOF'
+EVOPAIMO_RELAY_URL=https://primo.evomap.ai
+EVOPAIMO_LINK_CODE=你的LINK_CODE
+EVOPAIMO_SECRET=你的SECRET
+EOF
+chmod 600 ~/.config/evopaimo/relay.env
+
 cp connector/scripts/evopaimo-relay.service ~/.config/systemd/user/
-# 根据自己的 link_code / secret / agent-file 路径修改 ExecStart
 systemctl --user daemon-reload
 systemctl --user enable --now evopaimo-relay.service
 ```

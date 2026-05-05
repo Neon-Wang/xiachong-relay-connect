@@ -40,7 +40,7 @@
 | Cloudflare R2 上的 `evopaimo-connect.py` | ✅ 已上传（CI 的 R2 步骤也是成功的）— 这意味着 `https://primo.evomap.ai/connector/evopaimo-connect.py` 一直能拉到最新脚本 |
 | `connector/package.json` 版本号 | `1.3.0`（1.2.0 从未上过 npm） |
 | Phase 1 hooks 集成代码 | ⛔ 已撤除（2026-04-22，commit `b42ddff`）——原因见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md) |
-| 当前唯一 transport | CLI 模式（subprocess `openclaw agent --message`），无 fallback 层 |
+| 当前 transport 口径 | Channel Plugin 为推荐主路径；本手册仅维护 CLI Connector 兼容 / 保底包（subprocess `openclaw agent --message`） |
 | 上次 CI 运行 | 首次 publish 一直 404（包不存在）；sync + R2 上传步骤一直成功。完整历史见 `gh run list --workflow=publish-connectors.yml` |
 
 **也就是说**：当前用户跑 `npx evopaimo-relay-connect ...` 会拿到"找不到包"的错误。所有依赖 npm 安装路径的文档（`docs/openclaw-integration.md`、`PERSISTENT_SETUP.md` 等）暂时**只对从 git 主干直接跑 Python 脚本的用户有效**。
