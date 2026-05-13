@@ -11,7 +11,7 @@ import {
 } from "./pairing.js";
 
 async function mkTmpDir(): Promise<string> {
-  return await fs.mkdtemp(path.join(os.tmpdir(), "evopaimo-pair-"));
+  return await fs.mkdtemp(path.join(os.tmpdir(), "pinit-pair-"));
 }
 
 describe("pairWithRelay", () => {

@@ -1,13 +1,13 @@
-# @evopaimo/channel
+# @pinit/channel
 
-EvoPaimo channel plugin for [OpenClaw](https://openclaw.com).
+Pinit channel plugin for [OpenClaw](https://openclaw.com).
 
-This package brings the EvoPaimo desktop pet (and its Cloudflare Workers
+This package brings the Pinit desktop pet (and its Cloudflare Workers
 relay backbone) into OpenClaw as a native **channel plugin** — the same
 shape OpenClaw uses for Slack, Telegram, Discord, WhatsApp, etc.
 
-It replaces the Python CLI connector (`evopaimo-relay-connect`) as the
-preferred way to run an EvoPaimo-enabled OpenClaw. The CLI connector
+It replaces the Python CLI connector (`pinit-relay-connect`) as the
+preferred way to run an Pinit-enabled OpenClaw. The CLI connector
 remains available as a fallback when users prefer not to install plugins.
 
 ---
@@ -21,7 +21,7 @@ remains available as a fallback when users prefer not to install plugins.
 | Phase 2 | M3: Workers `/ws/openclaw` reused (no endpoint split) | ✅ |
 | Phase 2 | M5: Full VM end-to-end green | ✅ (Electron → Workers → plugin → Kimi → back) |
 | Phase 2 | M6a: R2 + GitHub Release distribution | ✅ (CI 自动写两条腿，2026-04-22 上线) |
-| Phase 2 | M6b: npm publish + Trusted Publishing | ⏸ **PENDING** — 等 `@evopaimo` scope 持有人手动首发；workflow 中相应 step 已注释。详见 [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单) |
+| Phase 2 | M6b: npm publish + Trusted Publishing | ⏸ **PENDING** — 等 `@pinit` scope 持有人手动首发；workflow 中相应 step 已注释。详见 [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单) |
 | Phase 2 | M4: Client "plugin online" indicator | ⏸ deferred |
 | Sec 0.1.x | Hardening: P0/P1 fixes + 19 unit + 27 attack-sim | ✅ (see [Security](#security)) |
 
@@ -40,42 +40,49 @@ Two active distribution lanes built from the same CI run (identical sha256):
 
 | Lane | URL | Best for |
 |---|---|---|
-| GitHub Release | `https://github.com/EvoMap/XiaChong/releases/tag/channel-plugin-v<ver>` | Auditing, pinning specific versions |
-| Cloudflare R2 mirror | `https://xiachong-api.aged-sea-ee35.workers.dev/channel-plugin/latest.tgz` | China-friendly direct download |
-| ~~npm~~ | ~~`openclaw plugins install @evopaimo/channel`~~ | **PENDING** — package not on npm yet (CI publish step commented out). See [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单). |
+| GitHub Release | `https://github.com/EvoMap/Pinit/releases/tag/channel-plugin-v<ver>` | Auditing, pinning specific versions |
+| Cloudflare R2 mirror | `https://pinit-api.aged-sea-ee35.workers.dev/channel-plugin/latest.tgz` | China-friendly direct download |
+| ~~npm~~ | ~~`openclaw plugins install @pinit/channel`~~ | **PENDING** — package not on npm yet (CI publish step commented out). See [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单). |
 
 ```bash
 # Quick install via R2 mirror:
-curl -fL -o evopaimo-channel.tgz \
-  https://xiachong-api.aged-sea-ee35.workers.dev/channel-plugin/latest.tgz
-curl -fL https://xiachong-api.aged-sea-ee35.workers.dev/channel-plugin/latest.sha256 \
+openclaw --version  # must be >= 2026.4.0
+curl -fL -o pinit-channel.tgz \
+  https://pinit-api.aged-sea-ee35.workers.dev/channel-plugin/latest.tgz
+curl -fL https://pinit-api.aged-sea-ee35.workers.dev/channel-plugin/latest.sha256 \
   | shasum -a 256 -c -
-openclaw plugins install ./evopaimo-channel.tgz
+openclaw plugins install ./pinit-channel.tgz
 
-# PENDING — `openclaw plugins install @evopaimo/channel` will Just Work
+# PENDING — `openclaw plugins install @pinit/channel` will Just Work
 # once the npm lane is reactivated (see HANDOVER.md). Until then use the
 # tarball flow above.
 
 # From a local .tgz (for dev loops):
 cd connector/channel-plugin
 pnpm install && pnpm build && pnpm pack
-scp evopaimo-channel-0.1.2.tgz xc-debian:~/
-ssh xc-debian "openclaw plugins install --force ~/evopaimo-channel-0.1.2.tgz"
-# If config validation complains about a stale `channels.evopaimo`, see the
+scp pinit-channel-0.1.2.tgz xc-debian:~/
+ssh xc-debian "openclaw plugins install ~/pinit-channel-0.1.2.tgz"
+# If config validation complains about a stale `channels.pinit`, see the
 # "Re-install gotcha" section below.
 ```
+
+OpenClaw 2026.3.x cannot load this plugin: the runtime imports the
+2026.4.0+ channel SDK (`channel-core` / `channel-contract`). If you see a
+`plugin-sdk/root-alias.cjs/channel-core` module error, upgrade OpenClaw and
+restart the gateway; manually extracting the tarball will not make 2026.3.x
+compatible.
 
 ### Re-install gotcha
 
 `openclaw plugins install` runs config validation _before_ writing the new
-plugin files. If a previous install already registered `channels.evopaimo`
+plugin files. If a previous install already registered `channels.pinit`
 but the plugin folder was removed, config validation will reject with:
 
 ```
-Invalid config: channels.evopaimo: unknown channel id: evopaimo
+Invalid config: channels.pinit: unknown channel id: pinit
 ```
 
-Workaround during development: temporarily strip `channels.evopaimo` from
+Workaround during development: temporarily strip `channels.pinit` from
 `~/.openclaw/openclaw.json`, install, then restore it. A small helper:
 
 ```bash
@@ -83,17 +90,17 @@ python3 -c "
 import json, pathlib
 p = pathlib.Path.home() / '.openclaw/openclaw.json'
 cfg = json.loads(p.read_text())
-saved = cfg.get('channels', {}).pop('evopaimo', None)
+saved = cfg.get('channels', {}).pop('pinit', None)
 p.write_text(json.dumps(cfg, indent=2))
-pathlib.Path.home().joinpath('.openclaw/channels-evopaimo.saved.json').write_text(json.dumps(saved))
+pathlib.Path.home().joinpath('.openclaw/channels-pinit.saved.json').write_text(json.dumps(saved))
 "
-openclaw plugins install --force ~/evopaimo-channel-0.1.2.tgz
+openclaw plugins install ~/pinit-channel-0.1.2.tgz
 python3 -c "
 import json, pathlib
 p = pathlib.Path.home() / '.openclaw/openclaw.json'
 cfg = json.loads(p.read_text())
-cfg.setdefault('channels', {})['evopaimo'] = json.loads(
-    pathlib.Path.home().joinpath('.openclaw/channels-evopaimo.saved.json').read_text())
+cfg.setdefault('channels', {})['pinit'] = json.loads(
+    pathlib.Path.home().joinpath('.openclaw/channels-pinit.saved.json').read_text())
 p.write_text(json.dumps(cfg, indent=2))
 "
 ```
@@ -115,16 +122,16 @@ Edit `~/.openclaw/openclaw.json`:
   // Recommended: explicitly allowlist this plugin so unknown plugins don't
   // auto-load if you ever drop another tarball into ~/.openclaw/extensions/.
   "plugins": {
-    "allow": ["evopaimo"]
+    "allow": ["pinit"]
   },
   "channels": {
-    "evopaimo": {
+    "pinit": {
       "relayUrl": "https://primo.evomap.ai",
       "linkCode": "ABC123",
       "secret": "64-hex-chars-from-electron-client",
       "sessionLabel": "mobile-app",
       "emotionWrapperEnabled": true,
-      // Required to silence the OpenClaw audit `channels.evopaimo.dm.open`
+      // Required to silence the OpenClaw audit `channels.pinit.dm.open`
       // CRITICAL warning. Our actual auth gate is the relay's linkCode +
       // secret pairing — anyone who can establish a WebSocket session has
       // already proven possession of the secret. See "Security" below.
@@ -136,14 +143,14 @@ Edit `~/.openclaw/openclaw.json`:
 
 | Field | Required | Meaning |
 |---|---|---|
-| `relayUrl` | yes | Cloudflare Workers relay base URL (no trailing slash). `https://primo.evomap.ai` = staging. `https://xiachong-api.aged-sea-ee35.workers.dev` = production. |
-| `linkCode` | yes | 6-char pairing code shown in the EvoPaimo desktop client's connection panel. |
+| `relayUrl` | yes | Cloudflare Workers relay base URL (no trailing slash). `https://primo.evomap.ai` = staging. `https://pinit-api.aged-sea-ee35.workers.dev` = production. |
+| `linkCode` | yes | 6-char pairing code shown in the Pinit desktop client's connection panel. |
 | `secret` | yes | 64-hex shared secret emitted alongside `linkCode`. The plugin only uses it for the initial `/api/link` call; a long-lived `agent_token` is derived and persisted afterwards. |
 | `sessionLabel` | no (default `mobile-app`) | Label recorded on each inbound session; shown in `openclaw status` and written into agent session metadata. |
 | `emotionWrapperEnabled` | no (default `true`) | If true, wrap user messages in the `EMOTION_PROMPT` JSON envelope so the LLM returns `{emotion, full_text, tts_text}`. Disable only if the host agent already supplies its own emotion prompt. |
 | `dmPolicy` / `allowFrom` | recommended | Forwarded to OpenClaw's DM policy check. Plugin runtime defaults to `open` with `allowFrom: ["*"]` because the relay's `linkCode + secret` pairing _is_ our allowlist, but `openclaw security audit` only sees the JSON file — write `"allowFrom": ["*"]` explicitly to silence the CRITICAL audit warning. |
 
-The `linkCode` + `secret` come from the EvoPaimo desktop client. In
+The `linkCode` + `secret` come from the Pinit desktop client. In
 development builds the Electron main process logs the freshly provisioned
 pair to stderr; in production users copy them from the client UI.
 
@@ -161,7 +168,7 @@ Cloudflare Workers (Hono + Durable Objects)
 OpenClaw gateway (systemd / LaunchAgent)
        │  plugin loader
        ▼
-@evopaimo/channel  ── this package ──
+@pinit/channel  ── this package ──
   ├─ src/channel.ts           ChannelPlugin object (manifest + DM policy)
   ├─ src/runtime/
   │   ├─ pairing.ts           /api/link + /api/agent-auth HTTP handshake
@@ -169,7 +176,7 @@ OpenClaw gateway (systemd / LaunchAgent)
   │   ├─ account-runtime.ts   Per-account orchestrator; returns long-lived
   │   │                       promise that prevents gateway restart loop
   │   └─ dispatch.ts          Bridge inbound frames → OpenClaw agent
-  └─ src/protocol.ts          Wire format (mirrors evopaimo-connect.py)
+  └─ src/protocol.ts          Wire format (mirrors pinit-connect.py)
        │
        ▼
 OpenClaw agent (kimi/k2p5, google/gemini-*, …)
@@ -188,7 +195,7 @@ OpenClaw agent (kimi/k2p5, google/gemini-*, …)
    short-lived WS `token`. **Since 0.1.2** both calls ship an
    `openclaw_device_info` payload (`hostname`, `platform`, `os_release`,
    `arch`, `plugin_version`) built via `buildDeviceInfo()`; the relay
-   stamps it into `user_clients.openclaw_*` so the EvoPaimo website's
+   stamps it into `user_clients.openclaw_*` so the Pinit website's
    `/account/clients` page can show "OpenClaw: mac-mini-2024 · macOS
    15.2 · plugin 0.1.2" next to each device.
 3. `ws-client.ts` opens `wss://<relay>/ws/openclaw?token=…`, handles
@@ -213,7 +220,7 @@ OpenClaw agent (kimi/k2p5, google/gemini-*, …)
 ### State persistence
 
 Per-account state lives at
-`~/.openclaw/channels/evopaimo/state-<accountId>.json` with mode `0600`:
+`~/.openclaw/channels/pinit/state-<accountId>.json` with mode `0600`:
 
 ```json
 {
@@ -225,7 +232,7 @@ Per-account state lives at
 ```
 
 > **Note** — older versions (≤ 0.1.0 preview) stored state inside
-> `~/.openclaw/extensions/evopaimo/`. The runtime auto-migrates from that
+> `~/.openclaw/extensions/pinit/`. The runtime auto-migrates from that
 > location on first read so plugin upgrades don't force re-pairing. The
 > legacy file is left in place and becomes a no-op once the new path is
 > populated.
@@ -272,11 +279,11 @@ cd connector/channel-plugin && pnpm run attack-sim
 # 27 attack scenarios run against dist/internals.js — exit 0 = all blocked
 
 # Against a specific extension install (works today):
-EVOPAIMO_DIST=/path/to/extensions/evopaimo/dist \
-  node /path/to/extensions/evopaimo/scripts/attack-sim.mjs
+PINIT_DIST=/path/to/extensions/pinit/dist \
+  node /path/to/extensions/pinit/scripts/attack-sim.mjs
 
 # (PENDING) After the npm lane is reactivated, this will also work:
-#   npx -p @evopaimo/channel evopaimo-channel-attack-sim
+#   npx -p @pinit/channel pinit-channel-attack-sim
 ```
 
 End-to-end demonstration: with 0.1.2 installed, edit `~/.openclaw/openclaw.json`
@@ -284,7 +291,7 @@ to set `relayUrl: "http://attacker.evil/"` and restart the gateway.
 Expected outcome:
 
 ```text
-[gateway] shutdown error: Error: evopaimo: channels.evopaimo.relayUrl
+[gateway] shutdown error: Error: pinit: channels.pinit.relayUrl
   must use https:// scheme to prevent credential interception
   (got="http://attacker.evil/", scheme=http:);
   configure a TLS-protected relay endpoint (e.g. https://primo.evomap.ai).
@@ -299,9 +306,9 @@ The connector never opens the WebSocket — `linkCode + secret` cannot leak.
 with network send`. This is a **false positive**:
 
 - The flagged `fs.readFile` reads our own saved
-  `~/.openclaw/channels/evopaimo/state-<accountId>.json` (the `agentToken`
+  `~/.openclaw/channels/pinit/state-<accountId>.json` (the `agentToken`
   we cached during pairing for reconnection). Versions <= 0.1.0 may be
-  migrated from `~/.openclaw/extensions/evopaimo/state-<accountId>.json`.
+  migrated from `~/.openclaw/extensions/pinit/state-<accountId>.json`.
 - The unrelated `ws.send` in the same bundle forwards user chat messages
   to the relay.
 - There is no data path from "read agentToken" to "send agentToken over
@@ -319,7 +326,7 @@ See the April 22 connector security audit notes (local reference, not published)
   binary; the connector is not your last line of defense here. Protect
   `~/.openclaw/` with normal filesystem permissions.
 - Compromise of the OpenClaw gateway process itself (a hostile plugin
-  loaded alongside us). Use `plugins.allow: ["evopaimo"]` to limit which
+  loaded alongside us). Use `plugins.allow: ["pinit"]` to limit which
   plugins can auto-load.
 - A LLM that ignores prompt-injection on its own. We sanitize fields
   that *we* control before they reach the agent, but a sufficiently
@@ -342,7 +349,7 @@ pnpm typecheck         # tsc --noEmit
 pnpm build             # tsup → dist/index.js, dist/setup-entry.js, dist/internals.js, dist/*.d.ts
 pnpm attack-sim        # 27 attack scenarios against dist/internals.js
 pnpm ci                # typecheck + test + build + attack-sim
-pnpm pack              # evopaimo-channel-0.1.2.tgz
+pnpm pack              # pinit-channel-0.1.2.tgz
 ```
 
 ### VM end-to-end smoke test
@@ -353,13 +360,13 @@ pnpm pack              # evopaimo-channel-0.1.2.tgz
 2. Configure and install the plugin on the gateway host (see above).
 3. Restart the gateway. Look for these log lines (in order):
    ```
-   [evopaimo] started account default (relay=…)
-   [evopaimo] evopaimo-ws: pairing: trying agent-auth with stored agent_token
-   [evopaimo] paired via agent-auth|link (appId=… agentId=…)
-   [evopaimo] evopaimo-ws: connecting accountId=default relayUrl=…
-   [evopaimo] evopaimo-ws: open accountId=default
+   [pinit] started account default (relay=…)
+   [pinit] pinit-ws: pairing: trying agent-auth with stored agent_token
+   [pinit] paired via agent-auth|link (appId=… agentId=…)
+   [pinit] pinit-ws: connecting accountId=default relayUrl=…
+   [pinit] pinit-ws: open accountId=default
    ```
-   There should be **no** `[evopaimo] [default] auto-restart attempt N/10`
+   There should be **no** `[pinit] [default] auto-restart attempt N/10`
    lines afterwards; seeing them means `startAccount` returned early
    (regression on the donePromise contract).
 4. Send a message from the Electron client's chat UI. The agent should
@@ -371,7 +378,7 @@ pnpm pack              # evopaimo-channel-0.1.2.tgz
 
 ```
 connector/channel-plugin/
-├── package.json              # npm package (name: @evopaimo/channel)
+├── package.json              # npm package (name: @pinit/channel)
 ├── openclaw.plugin.json      # OpenClaw plugin manifest + configSchema
 ├── tsconfig.json
 ├── tsup.config.ts            # 3 entries: index, setup-entry, internals
@@ -403,7 +410,7 @@ connector/channel-plugin/
 
 ## Publishing (for maintainers)
 
-**Active flow today** (R2 + GitHub Release): bump `connector/channel-plugin/package.json` `version`, commit, push, then tag `channel-plugin-vX.Y.Z` and `git push origin channel-plugin-vX.Y.Z`. CI builds, packs, uploads to R2 (staging + prod) and creates the GitHub Release. End-user impact: `https://xiachong-api.aged-sea-ee35.workers.dev/channel-plugin/latest.tgz` flips within a couple of minutes.
+**Active flow today** (R2 + GitHub Release): bump `connector/channel-plugin/package.json` `version`, commit, push, then tag `channel-plugin-vX.Y.Z` and `git push origin channel-plugin-vX.Y.Z`. CI builds, packs, uploads to R2 (staging + prod) and creates the GitHub Release. End-user impact: `https://pinit-api.aged-sea-ee35.workers.dev/channel-plugin/latest.tgz` flips within a couple of minutes.
 
 **npm lane (PENDING)**: The historical step-by-step in [`PUBLISHING.md`](./PUBLISHING.md) describes the npm Trusted Publishing flow. **Do not follow it as-is** — the workflow steps it references are commented out. Reactivation procedure is in [`HANDOVER.md`](./HANDOVER.md#npm-通道重启清单).
 
@@ -413,5 +420,5 @@ connector/channel-plugin/
 
 - Spec: [`docs/specs/openclaw-hooks-integration/spec-2-channel-plugin.md`](../../docs/specs/openclaw-hooks-integration/spec-2-channel-plugin.md)
 - Plan: [`docs/specs/openclaw-hooks-integration/plan-phase-2.md`](../../docs/specs/openclaw-hooks-integration/plan-phase-2.md)
-- Phase 1 reference implementation: [`connector/evopaimo-connect.py`](../evopaimo-connect.py)
+- Phase 1 reference implementation: [`connector/pinit-connect.py`](../pinit-connect.py)
 - OpenClaw Plugin SDK: `openclaw/plugin-sdk/channel-contract`

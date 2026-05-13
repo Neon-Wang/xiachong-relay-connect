@@ -1,5 +1,5 @@
 import { defineSetupPluginEntry } from "openclaw/plugin-sdk/channel-core";
-import { evopaimoPlugin } from "./src/channel.js";
+import { pinitPlugin } from "./src/channel.js";
 
-const entry: unknown = defineSetupPluginEntry(evopaimoPlugin);
+const entry: unknown = defineSetupPluginEntry(pinitPlugin);
 export default entry;

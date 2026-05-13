@@ -2,10 +2,10 @@
 
 > ## ⚠️ DO NOT FOLLOW THIS DOCUMENT AS-IS (npm 部分 PENDING)
 >
-> **Status (2026-04-22)**: `evopaimo-relay-connect` 的 npm 通道当前**整个搁置**。
+> **Status (2026-04-22)**: `pinit-relay-connect` 的 npm 通道当前**整个搁置**。
 > - `.github/workflows/publish-connectors.yml` 中的 `Publish connector to npm` step 已显式注释。
 > - 包从未在 npmjs.com 注册成功（5 次 CI publish 都因首次发包必须手动而失败）。
-> - 用户实际拿脚本的两条腿是 **GitHub mirror**（`Neon-Wang/xiachong-relay-connect` 自动同步）+ **R2 直链**（`https://primo.evomap.ai/connector/evopaimo-connect.py`）。
+> - 用户实际拿脚本的两条腿是 **GitHub mirror**（`Neon-Wang/xiachong-relay-connect` 自动同步）+ **R2 直链**（`https://primo.evomap.ai/connector/pinit-connect.py`）。
 >
 > **当前真正生效的发版流程**：照常 push 到 `main` → CI 自动同步 GitHub 镜像 + 上传 R2，零人工。本文 §三的"日常发版"流程对 GitHub/R2 部分有效，但所有 npm 步骤都暂时不要执行。
 >
@@ -23,7 +23,7 @@
 
 ## TL;DR
 
-1. **npm 包名 `evopaimo-relay-connect` 当前在 npm registry 上不存在**（`npm view` 返回 404）。历史上 5 次 CI publish 都因为这个原因 fail——Trusted Publishing **不能凭空创建一个新包**，第一次必须用本地 `npm publish` 手动建出来。
+1. **npm 包名 `pinit-relay-connect` 当前在 npm registry 上不存在**（`npm view` 返回 404）。历史上 5 次 CI publish 都因为这个原因 fail——Trusted Publishing **不能凭空创建一个新包**，第一次必须用本地 `npm publish` 手动建出来。
 2. 一旦第一次手动发完 + 在 npmjs.com 配好 Trusted Publishing 绑定，**之后每次只要 bump `connector/package.json` 的 `version` 字段 + commit + push 到 `main`，CI 会自动 publish**。
 3. CI workflow：[`.github/workflows/publish-connectors.yml`](../.github/workflows/publish-connectors.yml)
 4. 不需要在 GitHub Secrets 里存 `NPM_TOKEN`——用的是 OIDC Trusted Publishing。
@@ -34,16 +34,16 @@
 
 | 维度 | 状态 |
 |---|---|
-| npm 包 `evopaimo-relay-connect` | ❌ **不存在**（`npm view evopaimo-relay-connect version` → 404） |
-| 旧 npm 包 `xiachong-relay-connect` | ❌ **也不存在**（README 里写的"已 deprecate"是基于错误假设，实际从未发布过） |
+| npm 包 `pinit-relay-connect` | ❌ **不存在**（`npm view pinit-relay-connect version` → 404） |
+| 旧 npm 包 `pinit-relay-connect` | ❌ **也不存在**（README 里写的"已 deprecate"是基于错误假设，实际从未发布过） |
 | GitHub 镜像 `Neon-Wang/xiachong-relay-connect` | ✅ 存在且已 sync 到 hooks 集成代码（CI 的 sync 步骤是成功的，只有 npm publish 步骤失败） |
-| Cloudflare R2 上的 `evopaimo-connect.py` | ✅ 已上传（CI 的 R2 步骤也是成功的）— 这意味着 `https://primo.evomap.ai/connector/evopaimo-connect.py` 一直能拉到最新脚本 |
+| Cloudflare R2 上的 `pinit-connect.py` | ✅ 已上传（CI 的 R2 步骤也是成功的）— 这意味着 `https://primo.evomap.ai/connector/pinit-connect.py` 一直能拉到最新脚本 |
 | `connector/package.json` 版本号 | `1.3.0`（1.2.0 从未上过 npm） |
 | Phase 1 hooks 集成代码 | ⛔ 已撤除（2026-04-22，commit `b42ddff`）——原因见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md) |
 | 当前 transport 口径 | Channel Plugin 为推荐主路径；本手册仅维护 CLI Connector 兼容 / 保底包（subprocess `openclaw agent --message`） |
 | 上次 CI 运行 | 首次 publish 一直 404（包不存在）；sync + R2 上传步骤一直成功。完整历史见 `gh run list --workflow=publish-connectors.yml` |
 
-**也就是说**：当前用户跑 `npx evopaimo-relay-connect ...` 会拿到"找不到包"的错误。所有依赖 npm 安装路径的文档（`docs/openclaw-integration.md`、`PERSISTENT_SETUP.md` 等）暂时**只对从 git 主干直接跑 Python 脚本的用户有效**。
+**也就是说**：当前用户跑 `npx pinit-relay-connect ...` 会拿到"找不到包"的错误。所有依赖 npm 安装路径的文档（`docs/openclaw-integration.md`、`PERSISTENT_SETUP.md` 等）暂时**只对从 git 主干直接跑 Python 脚本的用户有效**。
 
 ---
 
@@ -51,11 +51,11 @@
 
 | 谁 | 需要什么 | 一次性还是持续 |
 |---|---|---|
-| 接手 npm 账号的同事（首次发版人） | npm 账号已加入 `evopaimo-relay-connect` 包的 owners 列表（首次发版后才有这个包） | 一次性 + 持续 |
+| 接手 npm 账号的同事（首次发版人） | npm 账号已加入 `pinit-relay-connect` 包的 owners 列表（首次发版后才有这个包） | 一次性 + 持续 |
 | GitHub 仓库管理员（已是 Neon Wang） | 在 npmjs.com 把 GitHub repo 配成 Trusted Publisher | 一次性 |
 | 后续发版人（任何 push 到 main 的人） | 只要有 monorepo write 权限就行，不需要 npm 凭据 | 持续 |
 
-> npm Trusted Publishing 解释：CI 用 GitHub OIDC token 向 npm 证明"我是 `EvoMap/XiaChong` 仓库的 `publish-connectors.yml` workflow"，npm 信任这条来源就允许它 publish。**不需要在 CI 里存 npm token**，泄露面更小。详见[官方文档](https://docs.npmjs.com/trusted-publishers)。
+> npm Trusted Publishing 解释：CI 用 GitHub OIDC token 向 npm 证明"我是 `EvoMap/Pinit` 仓库的 `publish-connectors.yml` workflow"，npm 信任这条来源就允许它 publish。**不需要在 CI 里存 npm token**，泄露面更小。详见[官方文档](https://docs.npmjs.com/trusted-publishers)。
 
 ---
 
@@ -71,7 +71,7 @@
 
 ```bash
 npm whoami
-# 应该输出账号名，例如 "evopaimo-team"
+# 应该输出账号名，例如 "pinit-team"
 ```
 
 ### Step 2 · 本地准备发布环境
@@ -80,8 +80,8 @@ npm whoami
 
 ```bash
 # 1) 克隆 monorepo
-git clone https://github.com/EvoMap/XiaChong.git
-cd XiaChong
+git clone https://github.com/EvoMap/Pinit.git
+cd Pinit
 
 # 2) 切到要发版的 commit（一般是 main HEAD）
 git checkout main
@@ -105,9 +105,9 @@ npm publish --dry-run --access public
 ```
 
 dry-run 输出应该包含：
-- `name: evopaimo-relay-connect`
+- `name: pinit-relay-connect`
 - `version: 1.3.0`（或你设定的版本）
-- `Tarball Contents` 包含 5 个文件：`README.md` / `bin/run.js` / `evopaimo-connect.py` / `package.json` / `requirements.txt`
+- `Tarball Contents` 包含 5 个文件：`README.md` / `bin/run.js` / `pinit-connect.py` / `package.json` / `requirements.txt`
 - `unpacked size` 在 70-80 kB 之间
 
 如果有任何 ERROR 字样**先解决再继续**——这一步发现的问题改完不需要新 commit，直接重跑 dry-run 即可。
@@ -123,16 +123,16 @@ npm publish --access public
 **预期输出**：
 
 ```
-+ evopaimo-relay-connect@1.3.0
++ pinit-relay-connect@1.3.0
 ```
 
 **验证发版成功**：
 
 ```bash
-npm view evopaimo-relay-connect version
+npm view pinit-relay-connect version
 # 应输出 1.3.0（或你发的版本号）
 
-npm view evopaimo-relay-connect dist-tags
+npm view pinit-relay-connect dist-tags
 # 应输出 { latest: '1.3.0' }
 ```
 
@@ -140,7 +140,7 @@ npm view evopaimo-relay-connect dist-tags
 
 ### Step 5 · 配置 Trusted Publishing（让以后 CI 自动接管）
 
-1. 浏览器打开 `https://www.npmjs.com/package/evopaimo-relay-connect`
+1. 浏览器打开 `https://www.npmjs.com/package/pinit-relay-connect`
 2. 点 `Settings`（package 维护者才看得到）
 3. 找到 `Trusted Publishers` 部分，点 `Add Trusted Publisher`
 4. 选 `GitHub Actions`
@@ -149,7 +149,7 @@ npm view evopaimo-relay-connect dist-tags
 | 字段 | 值 |
 |---|---|
 | Organization or user | `EvoMap` |
-| Repository | `XiaChong` |
+| Repository | `Pinit` |
 | Workflow filename | `publish-connectors.yml` |
 | Environment | （留空）|
 
@@ -159,11 +159,11 @@ npm view evopaimo-relay-connect dist-tags
 
 可以**不**急着发新版本，直接用 `workflow_dispatch` 手动触发一次 CI 跑空（因为 package.json 版本号没变化，CI 会跑到 publish 步骤但跳过 `npm publish`，正好验证 Trusted Publisher 是否配对了）：
 
-1. 浏览器打开 `https://github.com/EvoMap/XiaChong/actions/workflows/publish-connectors.yml`
+1. 浏览器打开 `https://github.com/EvoMap/Pinit/actions/workflows/publish-connectors.yml`
 2. 点右上角 `Run workflow` → `Run workflow`
 3. 等约 1-2 分钟看结果
 4. 进入这次运行的日志，"Publish connector to npm" 步骤应该输出：
-   `Version 1.3.0 of evopaimo-relay-connect is already published.`
+   `Version 1.3.0 of pinit-relay-connect is already published.`
 
 只要看到这行就说明 Trusted Publishing 配置正确，下次真发版时 CI 会自动 publish。
 
@@ -188,7 +188,7 @@ npm view evopaimo-relay-connect dist-tags
 | 破坏性变更（删除参数、改默认行为） | bump major | `1.3.0` → `2.0.0` |
 | 预发版（让灰度用户测） | 加 `-rc.N` / `-beta.N` 后缀 | `1.4.0-rc.1` |
 
-> **prerelease 警告**：当前 CI 工作流**没有特殊处理 prerelease tag**——如果你 bump 成 `1.4.0-rc.1` 直接 push，npm 会把它**当作 `latest` 发**，新用户跑 `npx evopaimo-relay-connect` 会拉到 rc 版本。详见下方《四、Prerelease 流程》。
+> **prerelease 警告**：当前 CI 工作流**没有特殊处理 prerelease tag**——如果你 bump 成 `1.4.0-rc.1` 直接 push，npm 会把它**当作 `latest` 发**，新用户跑 `npx pinit-relay-connect` 会拉到 rc 版本。详见下方《四、Prerelease 流程》。
 
 ### 3.2 改 connector/package.json + 同步 README 行号
 
@@ -219,19 +219,19 @@ git push origin main
 
 ```bash
 gh run watch  # 等当前最新 run 跑完
-# 或浏览器打开 https://github.com/EvoMap/XiaChong/actions/workflows/publish-connectors.yml
+# 或浏览器打开 https://github.com/EvoMap/Pinit/actions/workflows/publish-connectors.yml
 ```
 
 CI 流程（约 2-3 分钟）：
 1. **Sync connector to GitHub** — 同步 `connector/` 到 `Neon-Wang/xiachong-relay-connect`
-2. **Upload connector artifacts to R2** — 上传 `evopaimo-connect.py`/`PERSISTENT_SETUP.md`/`docs/skills/evopaimo-connector-setup.md` 到 staging + prod 两个 R2 bucket
+2. **Upload connector artifacts to R2** — 上传 `pinit-connect.py`/`PERSISTENT_SETUP.md`/`docs/skills/pinit-connector-setup.md` 到 staging + prod 两个 R2 bucket
 3. **Publish connector to npm** — 如果 `package.json` 的 `version` 比 npm 上现有 latest 新就 publish；否则跳过
 
 ### 3.5 验证发版结果
 
 ```bash
 # 1) npm 上有新版本
-npm view evopaimo-relay-connect version
+npm view pinit-relay-connect version
 # 应输出你刚发的版本号
 
 # 2) GitHub 镜像同步了
@@ -239,10 +239,10 @@ gh api repos/Neon-Wang/xiachong-relay-connect/commits/main --jq '.commit.message
 # 应包含 "Sync from monorepo: <SHA>"
 
 # 3) R2 端点能拉到最新脚本
-curl -sI https://primo.evomap.ai/connector/evopaimo-connect.py | grep -i last-modified
+curl -sI https://primo.evomap.ai/connector/pinit-connect.py | grep -i last-modified
 
 # 4) npx 能装并跑
-npx --yes evopaimo-relay-connect@latest --help
+npx --yes pinit-relay-connect@latest --help
 # 应输出 connector 的 help 文案（relay/link-code/secret 等主参数 + status 子命令）
 ```
 
@@ -263,7 +263,7 @@ npx --yes evopaimo-relay-connect@latest --help
 npm publish --access public
 ```
 
-没有 `--tag` 参数。这意味着**无论你发 `1.4.0` 还是 `1.4.0-rc.1`，npm 都会把它打成 `latest` tag**——新用户跑 `npx evopaimo-relay-connect` 会拉到 rc 版本，破坏 stable 渠道。
+没有 `--tag` 参数。这意味着**无论你发 `1.4.0` 还是 `1.4.0-rc.1`，npm 都会把它打成 `latest` tag**——新用户跑 `npx pinit-relay-connect` 会拉到 rc 版本，破坏 stable 渠道。
 
 ### 4.2 解决方案 A：临时绕过 CI，本地手动发 prerelease
 
@@ -281,7 +281,7 @@ npm publish --tag next --access public
 # --tag next 会把这个版本打到 'next' tag，不会污染 latest
 
 # 3) 验证
-npm view evopaimo-relay-connect dist-tags
+npm view pinit-relay-connect dist-tags
 # 应该看到 { latest: '1.3.x', next: '1.4.0-rc.1' }
 
 # 4) 发完后把 package.json 还原回 stable 版本号（避免误推触发 CI 重发）
@@ -291,9 +291,9 @@ git checkout connector/package.json
 灰度用户安装：
 
 ```bash
-npx evopaimo-relay-connect@next ...
+npx pinit-relay-connect@next ...
 # 或显式指定版本
-npx evopaimo-relay-connect@1.4.0-rc.1 ...
+npx pinit-relay-connect@1.4.0-rc.1 ...
 ```
 
 灰度通过后，把 package.json 改成 `1.4.0`（去掉 rc 后缀）+ commit + push，让 CI 自动发 stable。
@@ -369,8 +369,8 @@ gh run view <RUN_ID> --log-failed
 
 | 错误信息（从 CI 日志拷贝） | 含义 | 解决方向 |
 |---|---|---|
-| `404 Not Found - PUT https://registry.npmjs.org/evopaimo-relay-connect` | 包不存在 + Trusted Publisher 没法创建包 | **回到《二、首次发布》**——同事必须先本地手动发一次 |
-| `403 Forbidden - PUT ...` | 包存在但 Trusted Publisher 配错了 | npmjs.com 上检查 Trusted Publisher 的 `Workflow filename` 是不是 `publish-connectors.yml`、`Repository` 是不是 `EvoMap/XiaChong` |
+| `404 Not Found - PUT https://registry.npmjs.org/pinit-relay-connect` | 包不存在 + Trusted Publisher 没法创建包 | **回到《二、首次发布》**——同事必须先本地手动发一次 |
+| `403 Forbidden - PUT ...` | 包存在但 Trusted Publisher 配错了 | npmjs.com 上检查 Trusted Publisher 的 `Workflow filename` 是不是 `publish-connectors.yml`、`Repository` 是不是 `EvoMap/Pinit` |
 | `EOTP Need otp` 或 `OTP required` | 本地 publish 时 2FA 没输 | 重跑命令并输入 2FA OTP |
 | `409 Conflict - cannot publish over previously published version` | 当前 package.json 版本号已经在 npm 上了 | bump 一个新版本号再 push（npm 不允许覆盖已发版本） |
 | `EPUBLISHCONFLICT` | 同上 | 同上 |
@@ -391,16 +391,16 @@ gh run watch
 
 ```bash
 # 把上一次发的版本从 latest tag 上移除（不推荐，npm 一般不让 unpublish 24h 后的版本）
-npm dist-tag rm evopaimo-relay-connect latest    # 临时让 npx 装不到任何版本——慎用
+npm dist-tag rm pinit-relay-connect latest    # 临时让 npx 装不到任何版本——慎用
 
 # 把某个旧版本重新设为 latest
-npm dist-tag add evopaimo-relay-connect@1.3.0 latest
+npm dist-tag add pinit-relay-connect@1.3.0 latest
 
 # Deprecate（不删除，但 npm install 时会警告）
-npm deprecate evopaimo-relay-connect@1.4.0 "Bug in hooks fallback, use 1.3.0 or 1.4.1+"
+npm deprecate pinit-relay-connect@1.4.0 "Bug in hooks fallback, use 1.3.0 or 1.4.1+"
 
 # Unpublish（仅 24 小时内可用，且会触发 npm 审核）
-npm unpublish evopaimo-relay-connect@1.4.0    # 强烈不推荐
+npm unpublish pinit-relay-connect@1.4.0    # 强烈不推荐
 ```
 
 > npm 默认禁止 unpublish 已经超过 72 小时的版本，避免破坏依赖图。**回滚的正确方式是发 patch 版本（1.4.1）修掉 bug**，不是 unpublish。
@@ -412,15 +412,15 @@ npm unpublish evopaimo-relay-connect@1.4.0    # 强烈不推荐
 | 文件 | 作用 |
 |---|---|
 | `connector/package.json` | npm 包元数据；改 `version` 字段触发发版 |
-| `connector/bin/run.js` | npm 包的 `bin` 入口（`npx evopaimo-relay-connect` 跑这个 Node 脚本，它再 spawn Python 主脚本） |
-| `connector/evopaimo-connect.py` | Python 主脚本（CLI 模式调 `openclaw agent --message`，含 echo fallback、`status` 子命令） |
+| `connector/bin/run.js` | npm 包的 `bin` 入口（`npx pinit-relay-connect` 跑这个 Node 脚本，它再 spawn Python 主脚本） |
+| `connector/pinit-connect.py` | Python 主脚本（CLI 模式调 `openclaw agent --message`，含 echo fallback、`status` 子命令） |
 | `connector/scripts/e2e-test-client.py` | 仿客户端 E2E 测试脚本（register → ws/client → 发消息 → 收 reply） |
-| `connector/scripts/evopaimo-relay.service` | systemd user unit 模板，用户部署时复制到 `~/.config/systemd/user/` |
+| `connector/scripts/pinit-relay.service` | systemd user unit 模板，用户部署时复制到 `~/.config/systemd/user/` |
 | `connector/requirements.txt` | Python 依赖（`bin/run.js` 启动时会自动 `pip install`） |
 | `connector/README.md` | npm 包的 README（同时也作为 GitHub `Neon-Wang/xiachong-relay-connect` 的 README，因为 sync 步骤直接 rsync 整个 connector 目录过去） |
 | `.github/workflows/publish-connectors.yml` | 发版 CI workflow |
 
-> **特别注意**：`README.md` 里关于"npm 包名从 1.2.0 起为 evopaimo-relay-connect，旧 xiachong-relay-connect@1.1.x 已 deprecate" 这句话**事实上是错的**——两个包名都从未真正出现在 npm registry 上。首次发版完成后建议把这句话改成"npm 包名 `evopaimo-relay-connect`，自 v1.x.y 起首次发布"。
+> **特别注意**：`README.md` 里关于"npm 包名从 1.2.0 起为 pinit-relay-connect，旧 pinit-relay-connect@1.1.x 已 deprecate" 这句话**事实上是错的**——两个包名都从未真正出现在 npm registry 上。首次发版完成后建议把这句话改成"npm 包名 `pinit-relay-connect`，自 v1.x.y 起首次发布"。
 
 ---
 
@@ -429,7 +429,7 @@ npm unpublish evopaimo-relay-connect@1.4.0    # 强烈不推荐
 如果你完全不熟悉 npm Trusted Publishing：
 
 1. **传统方式**：在 GitHub Secrets 里存 `NPM_TOKEN`，CI 用这个 token 调 `npm publish`。问题：token 泄露 = 任何人能以你的身份发包。
-2. **Trusted Publishing**：CI runner 向 GitHub OIDC provider 请求一个**短期 JWT**（每次 run 重新签发），里面带 claims `repository=EvoMap/XiaChong`、`workflow=publish-connectors.yml`。npm registry 收到这个 JWT 后核对自己配置的 trusted publisher 列表，匹配上就允许 publish。
+2. **Trusted Publishing**：CI runner 向 GitHub OIDC provider 请求一个**短期 JWT**（每次 run 重新签发），里面带 claims `repository=EvoMap/Pinit`、`workflow=publish-connectors.yml`。npm registry 收到这个 JWT 后核对自己配置的 trusted publisher 列表，匹配上就允许 publish。
 3. **优势**：仓库里不需要存任何 npm 凭据；token 短期 + 不可重放；只有指定 workflow 文件能 publish（其他 workflow 拿不到）。
 
 详见 [npm Trusted Publishers 官方文档](https://docs.npmjs.com/trusted-publishers)。
@@ -438,8 +438,8 @@ npm unpublish evopaimo-relay-connect@1.4.0    # 强烈不推荐
 
 ## 八、Known Issues（写入文档让交接同事知道，但不阻塞发版）
 
-1. **`bin/run.js` help 文案**：第 53-66 行只列出了 `--relay --link-code --secret`，没有提 `status` 子命令。不影响功能（参数会正确转发给 Python），只是 `npx evopaimo-relay-connect` 不带参数时看不到 `status` 子命令提示。
-2. **README 关于"deprecate xiachong-relay-connect@1.1.x"的说明是虚构的**——见第六节末尾说明。
+1. **`bin/run.js` help 文案**：第 53-66 行只列出了 `--relay --link-code --secret`，没有提 `status` 子命令。不影响功能（参数会正确转发给 Python），只是 `npx pinit-relay-connect` 不带参数时看不到 `status` 子命令提示。
+2. **README 关于"deprecate pinit-relay-connect@1.1.x"的说明是虚构的**——见第六节末尾说明。
 3. **CI 没处理 prerelease tag**——见第四节。
 4. **1.2.0 版本号已被占用（虽然从未 publish）**：本地 package.json 历史上出现过 1.2.0（当时 hooks 集成方案还在），虽然没真发到 npm，但后续要跳过 1.2.0 直接发 1.3.0，避免给读 git log 的人造成"1.2.0 存在但被撤回"的误解。
 

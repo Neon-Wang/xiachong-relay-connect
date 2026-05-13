@@ -17,7 +17,7 @@
 ## 你是谁、为什么收到这份文档
 
 - 你是团队里**持有 npm 发布账号**的同事。
-- EvoPaimo 的 desktop client（历史代号 XiaChong，现在叫 EvoPaimo/虾宠）有一个叫 `connector` 的 Python 中继脚本。我们想把它发成一个 npm 包 **`evopaimo-relay-connect`**，让用户一条 `npx evopaimo-relay-connect ...` 就能跑起来。
+- Pinit 的 desktop client（历史代号 Pinit，现在叫 Pinit/Pinit）有一个叫 `connector` 的 Python 中继脚本。我们想把它发成一个 npm 包 **`pinit-relay-connect`**，让用户一条 `npx pinit-relay-connect ...` 就能跑起来。
 - 这个包在 npm registry 上**从来没被发布过**。npm 的 Trusted Publishing（CI 无密钥自动发版）要求**先由人手动发第一次**才能激活——这就是为什么需要你。
 - 做完之后，CI 会用 GitHub OIDC Trusted Publishing 自动发版，**不再需要你每次介入**。
 
@@ -27,7 +27,7 @@
 
 | 编号 | 内容 | 预计耗时 |
 |---|---|---|
-| **Part A** | 在你自己的电脑上跑一次 `npm publish`，把 `evopaimo-relay-connect@1.3.0` 推到 npm | 10 分钟 |
+| **Part A** | 在你自己的电脑上跑一次 `npm publish`，把 `pinit-relay-connect@1.3.0` 推到 npm | 10 分钟 |
 | **Part B** | 去 npmjs.com 网页上配置 Trusted Publisher，绑定到 GitHub CI | 3 分钟 |
 
 做完你就结束了。之后任何 connector 版本更新，王浩宇（或他指派的 maintainer）只要 bump `connector/package.json` 的 version 字段 + push，CI 会自动发新版。
@@ -43,7 +43,7 @@
 ```bash
 # 1. 你的 npm 账号已经存在，并且开了 2FA
 npm whoami
-# 应该输出你的账号名，例如 'wanghao-xy' 或 'evopaimo-team'
+# 应该输出你的账号名，例如 'wanghao-xy' 或 'pinit-team'
 
 # 2. Node 16+
 node --version
@@ -65,8 +65,8 @@ npm login
 
 ```bash
 # 1. 拉代码
-git clone https://github.com/EvoMap/XiaChong.git
-cd XiaChong/connector
+git clone https://github.com/EvoMap/Pinit.git
+cd Pinit/connector
 
 # 2. 检查当前版本号（应该是 1.3.0）
 cat package.json | grep '"version"'
@@ -78,21 +78,21 @@ npm publish --dry-run --access public
 **你应该看到类似这样的输出**（关键是 `name` 和 `Tarball Contents`）：
 
 ```
-npm notice 📦  evopaimo-relay-connect@1.3.0
+npm notice 📦  pinit-relay-connect@1.3.0
 npm notice Tarball Contents
 npm notice 3.9kB  README.md
 npm notice 2.1kB  bin/run.js
-npm notice 65kB   evopaimo-connect.py
+npm notice 65kB   pinit-connect.py
 npm notice 1.2kB  package.json
 npm notice 45B    requirements.txt
 npm notice === Tarball Details ===
-npm notice name:          evopaimo-relay-connect
+npm notice name:          pinit-relay-connect
 npm notice version:       1.3.0
-npm notice filename:      evopaimo-relay-connect-1.3.0.tgz
+npm notice filename:      pinit-relay-connect-1.3.0.tgz
 npm notice unpacked size: 72.5 kB
 ```
 
-> 如果你看到 `name:` 不是 `evopaimo-relay-connect`，或者 version 不是 `1.3.0`，**先停住来问我们**——不要继续。
+> 如果你看到 `name:` 不是 `pinit-relay-connect`，或者 version 不是 `1.3.0`，**先停住来问我们**——不要继续。
 
 ```bash
 # 4. 正式发布（这一步是真的往 npm 推了）
@@ -103,17 +103,17 @@ npm publish --access public
 **成功的话你会看到**：
 
 ```
-+ evopaimo-relay-connect@1.3.0
++ pinit-relay-connect@1.3.0
 ```
 
 ### 立刻验证
 
 ```bash
 # 任意机器都能跑
-npm view evopaimo-relay-connect version
+npm view pinit-relay-connect version
 # 应输出：1.3.0
 
-npm view evopaimo-relay-connect dist-tags
+npm view pinit-relay-connect dist-tags
 # 应输出：{ latest: '1.3.0' }
 ```
 
@@ -125,7 +125,7 @@ npm view evopaimo-relay-connect dist-tags
 
 这一步让 GitHub CI 以后能代替你自动发版。
 
-1. 浏览器打开：https://www.npmjs.com/package/evopaimo-relay-connect
+1. 浏览器打开：https://www.npmjs.com/package/pinit-relay-connect
 2. 右上角点 **`Settings`**（只有 owner 才看得到这个入口——你刚发完包，你就是 owner）
 3. 左侧菜单选 **`Trusted Publishers`**
 4. 点 **`Add Trusted Publisher`**
@@ -135,7 +135,7 @@ npm view evopaimo-relay-connect dist-tags
 | 字段 | 填什么 |
 |---|---|
 | **Organization or user** | `EvoMap` |
-| **Repository** | `XiaChong` |
+| **Repository** | `Pinit` |
 | **Workflow filename** | `publish-connectors.yml` |
 | **Environment** | *（留空，不要填任何东西）* |
 
@@ -146,14 +146,14 @@ npm view evopaimo-relay-connect dist-tags
 ### 验证 Trusted Publisher 配对成功
 
 打开：
-https://github.com/EvoMap/XiaChong/actions/workflows/publish-connectors.yml
+https://github.com/EvoMap/Pinit/actions/workflows/publish-connectors.yml
 
 点右上角 **`Run workflow`** 按钮（dropdown 里 branch 保留 `main` 默认）→ **`Run workflow`**。
 
 等 2 分钟刷新，你应该看到一次新的绿勾 ✅ workflow run。点进去查看 `Publish connector to npm` step 的日志，应该输出：
 
 ```
-Version 1.3.0 of evopaimo-relay-connect is already published.
+Version 1.3.0 of pinit-relay-connect is already published.
 ```
 
 **看到这句就说明 Trusted Publishing 绑定成功**——以后 CI 能自动发新版，不需要任何 npm 账号介入。
@@ -170,7 +170,7 @@ Version 1.3.0 of evopaimo-relay-connect is already published.
 
 ## 如果卡住了
 
-### "我 dry-run 看到 `name:` 不是 evopaimo-relay-connect"
+### "我 dry-run 看到 `name:` 不是 pinit-relay-connect"
 
 **停下**。说明你 clone 的代码不对，或者同事本地改过 `package.json`。**不要继续 publish**，先联系王浩宇确认。
 
@@ -187,7 +187,7 @@ Version 1.3.0 of evopaimo-relay-connect is already published.
 
 ### "Trusted Publisher 页面找不到"
 
-https://www.npmjs.com/package/evopaimo-relay-connect/access 这个路径也能进到同个地方。如果还是找不到，右上角确认你登录的是那个发布包的账号。
+https://www.npmjs.com/package/pinit-relay-connect/access 这个路径也能进到同个地方。如果还是找不到，右上角确认你登录的是那个发布包的账号。
 
 ### "workflow_dispatch 触发后，publish step 仍然失败"
 

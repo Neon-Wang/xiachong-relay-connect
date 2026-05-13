@@ -1,0 +1,17 @@
+[Unit]
+Description=Pinit Relay Connector
+Documentation=https://github.com/Neon-Wang/xiachong-relay-connect
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.openclaw/workspace
+EnvironmentFile=%h/.config/pinit/relay.env
+Environment="OPENCLAW_CLI=openclaw"
+Environment="OPENCLAW_SESSION_LABEL=pinit-relay"
+ExecStart=/usr/bin/python3 -u %h/.openclaw/workspace/pinit-connect.py --relay ${PINIT_RELAY_URL} --link-code ${PINIT_LINK_CODE} --secret ${PINIT_SECRET} --label ${OPENCLAW_SESSION_LABEL} --agent-file %h/.config/pinit/agent.json
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

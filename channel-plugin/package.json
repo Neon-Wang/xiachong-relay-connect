@@ -1,7 +1,7 @@
 {
-  "name": "@evopaimo/channel",
+  "name": "@pinit/channel",
   "version": "0.1.2",
-  "description": "EvoPaimo channel plugin for OpenClaw. Bridges the desktop pet client (via Cloudflare Workers relay) into the local OpenClaw agent runtime without requiring a CLI subprocess.",
+  "description": "Pinit channel plugin for OpenClaw. Bridges the desktop companion client (via Cloudflare Workers relay) into the local OpenClaw agent runtime without requiring a CLI subprocess.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -29,15 +29,15 @@
     "CHANGELOG.md"
   ],
   "bin": {
-    "evopaimo-channel-attack-sim": "./scripts/attack-sim.mjs"
+    "pinit-channel-attack-sim": "./scripts/attack-sim.mjs"
   },
   "openclaw": {
     "extensions": ["./dist/index.js"],
     "setupEntry": "./dist/setup-entry.js",
     "channel": {
-      "id": "evopaimo",
-      "label": "EvoPaimo",
-      "blurb": "Relay desktop pet client through the EvoPaimo Cloudflare Workers relay."
+      "id": "pinit",
+      "label": "Pinit",
+      "blurb": "Relay desktop companion client through the Pinit Cloudflare Workers relay."
     }
   },
   "scripts": {
@@ -76,13 +76,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Neon-Wang/XiaChong.git",
+    "url": "git+https://github.com/Neon-Wang/pinit.git",
     "directory": "connector/channel-plugin"
   },
   "keywords": [
     "openclaw",
-    "evopaimo",
-    "channel-plugin",
-    "xiachong"
+    "pinit",
+    "channel-plugin"
   ]
 }

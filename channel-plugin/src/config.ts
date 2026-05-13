@@ -1,5 +1,5 @@
 /**
- * Pure config-resolution + URL-validation logic for the EvoPaimo channel.
+ * Pure config-resolution + URL-validation logic for the Pinit channel.
  *
  * This module is deliberately a *leaf* — it does NOT import any OpenClaw
  * runtime modules. That isolation is what lets `internals.ts` re-export
@@ -14,16 +14,16 @@ import type { OpenClawConfig } from "openclaw/plugin-sdk/channel-core";
 
 /**
  * The slice of `openclaw.json` that this plugin owns, shaped exactly as
- * declared in `openclaw.plugin.json`'s `configSchema.evopaimo`.
+ * declared in `openclaw.plugin.json`'s `configSchema.pinit`.
  */
-export type EvoPaimoConfig = {
+export type PinitConfig = {
   relayUrl?: string;
   linkCode?: string;
   secret?: string;
   sessionLabel?: string;
   emotionWrapperEnabled?: boolean;
   allowFrom?: string[];
-  accounts?: Record<string, EvoPaimoConfig>;
+  accounts?: Record<string, PinitConfig>;
 };
 
 /** What we resolve up-front so every adapter can reason about the same shape. */
@@ -41,10 +41,10 @@ export type ResolvedAccount = {
 export function readConfigSection(
   cfg: OpenClawConfig,
   accountId?: string | null,
-): EvoPaimoConfig | undefined {
+): PinitConfig | undefined {
   const channels = (cfg as { channels?: Record<string, unknown> }).channels;
   if (!channels || typeof channels !== "object") return undefined;
-  const section = channels["evopaimo"] as EvoPaimoConfig | undefined;
+  const section = channels["pinit"] as PinitConfig | undefined;
   if (!section || typeof section !== "object") return undefined;
   if (accountId && section.accounts && typeof section.accounts === "object") {
     const account = section.accounts[accountId];
@@ -75,20 +75,20 @@ export function validateRelayUrlScheme(raw: string): void {
     url = new URL(raw);
   } catch {
     throw new Error(
-      `evopaimo: channels.evopaimo.relayUrl is not a valid URL (got=${JSON.stringify(raw)}); ` +
+      `pinit: channels.pinit.relayUrl is not a valid URL (got=${JSON.stringify(raw)}); ` +
         "must use https:// (e.g. https://primo.evomap.ai)",
     );
   }
   if (url.protocol !== "https:") {
     throw new Error(
-      `evopaimo: channels.evopaimo.relayUrl must use https:// scheme to prevent ` +
+      `pinit: channels.pinit.relayUrl must use https:// scheme to prevent ` +
         `credential interception (got=${JSON.stringify(raw)}, scheme=${url.protocol}); ` +
         "configure a TLS-protected relay endpoint (e.g. https://primo.evomap.ai).",
     );
   }
   if (!url.host) {
     throw new Error(
-      `evopaimo: channels.evopaimo.relayUrl is missing a host (got=${JSON.stringify(raw)})`,
+      `pinit: channels.pinit.relayUrl is missing a host (got=${JSON.stringify(raw)})`,
     );
   }
 }
@@ -103,14 +103,14 @@ export function resolveAccount(
   const secret = typeof section?.secret === "string" ? section.secret.trim() : "";
   if (!relayUrl) {
     throw new Error(
-      "evopaimo: channels.evopaimo.relayUrl is required (e.g. https://primo.evomap.ai)",
+      "pinit: channels.pinit.relayUrl is required (e.g. https://primo.evomap.ai)",
     );
   }
   validateRelayUrlScheme(relayUrl);
   if (!linkCode || !secret) {
     throw new Error(
-      "evopaimo: channels.evopaimo.linkCode and channels.evopaimo.secret are required; " +
-        "obtain them from the EvoPaimo desktop client's connection panel.",
+      "pinit: channels.pinit.linkCode and channels.pinit.secret are required; " +
+        "obtain them from the Pinit desktop client's connection panel.",
     );
   }
   return {
@@ -147,7 +147,7 @@ export function inspectAccount(cfg: OpenClawConfig, accountId?: string | null) {
 
 export function listAccountIds(cfg: OpenClawConfig): string[] {
   const channels = (cfg as { channels?: Record<string, unknown> }).channels;
-  const section = channels?.["evopaimo"] as EvoPaimoConfig | undefined;
+  const section = channels?.["pinit"] as PinitConfig | undefined;
   if (!section) return [];
   if (section.accounts && typeof section.accounts === "object") {
     return Object.keys(section.accounts);

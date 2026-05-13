@@ -1,6 +1,6 @@
 import type { ChannelPlugin } from "openclaw/plugin-sdk/channel-core";
 
-import { evopaimoGatewayAdapter } from "./runtime/account-runtime.js";
+import { pinitGatewayAdapter } from "./runtime/account-runtime.js";
 import {
   inspectAccount,
   listAccountIds,
@@ -8,13 +8,11 @@ import {
   type ResolvedAccount,
 } from "./config.js";
 
-// Re-export for backwards-compatibility — existing imports from src/channel.ts
-// (and external code that depends on the public surface) keep working.
-export type { EvoPaimoConfig, ResolvedAccount } from "./config.js";
+export type { PinitConfig, ResolvedAccount } from "./config.js";
 export { inspectAccount, resolveAccount } from "./config.js";
 
 /**
- * The EvoPaimo ChannelPlugin.
+ * The Pinit ChannelPlugin.
  *
  * The plugin ships its own `gateway` adapter so OpenClaw starts/stops the
  * WebSocket runtime per account as part of `openclaw gateway start`. The
@@ -23,16 +21,16 @@ export { inspectAccount, resolveAccount } from "./config.js";
  * `deliveryMode: "direct"` satisfies the SDK's adapter contract without
  * introducing a second delivery path.
  */
-export const evopaimoPlugin: ChannelPlugin<ResolvedAccount> = {
-  id: "evopaimo",
+export const pinitPlugin: ChannelPlugin<ResolvedAccount> = {
+  id: "pinit",
   meta: {
-    id: "evopaimo",
-    label: "EvoPaimo",
-    selectionLabel: "EvoPaimo (Desktop Pet Relay)",
-    detailLabel: "EvoPaimo",
-    docsPath: "/channels/evopaimo",
-    docsLabel: "evopaimo",
-    blurb: "Relay desktop pet client through the EvoPaimo Cloudflare Workers relay.",
+    id: "pinit",
+    label: "Pinit",
+    selectionLabel: "Pinit (Desktop Companion Relay)",
+    detailLabel: "Pinit",
+    docsPath: "/channels/pinit",
+    docsLabel: "pinit",
+    blurb: "Relay desktop companion client through the Pinit Cloudflare Workers relay.",
     systemImage: "cat",
   },
   capabilities: {
@@ -56,7 +54,7 @@ export const evopaimoPlugin: ChannelPlugin<ResolvedAccount> = {
     isConfigured: (account) =>
       Boolean(account.relayUrl && account.linkCode && account.secret),
     unconfiguredReason: () =>
-      "Configure channels.evopaimo with relayUrl, linkCode, and secret (get them from the EvoPaimo desktop client).",
+      "Configure channels.pinit with relayUrl, linkCode, and secret (get them from the Pinit desktop client).",
   },
   // D2 (spec §5): defer DM authentication entirely to the Workers relay.
   // The relay's pairing flow (/api/link + /api/agent-auth) is our actual
@@ -75,12 +73,12 @@ export const evopaimoPlugin: ChannelPlugin<ResolvedAccount> = {
       return {
         policy,
         allowFrom,
-        allowFromPath: "channels.evopaimo.allowFrom",
+        allowFromPath: "channels.pinit.allowFrom",
         approveHint: "relay-managed (Workers link-code + secret)",
       };
     },
   },
-  gateway: evopaimoGatewayAdapter,
+  gateway: pinitGatewayAdapter,
   outbound: {
     deliveryMode: "direct",
     // All real outbound delivery happens inside the gateway-owned runtime via
@@ -88,8 +86,8 @@ export const evopaimoPlugin: ChannelPlugin<ResolvedAccount> = {
     // code path that bypasses the normal inbound flow (e.g. operator-invoked
     // broadcasts); in practice it is never called.
     sendText: async () => ({
-      channel: "evopaimo",
-      messageId: `evopaimo-direct-${Date.now()}`,
+      channel: "pinit",
+      messageId: `pinit-direct-${Date.now()}`,
     }),
   },
 };

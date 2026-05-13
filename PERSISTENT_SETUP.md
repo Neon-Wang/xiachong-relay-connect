@@ -1,6 +1,6 @@
-# EvoPaimo Connector 持久化部署 Skill
+# Pinit Connector 持久化部署 Skill
 
-本文档供 AI Agent（OpenClaw / Kimi Claw / Claude Code 等）参考，用于在用户机器上稳定运行 EvoPaimo Relay Connector。
+本文档供 AI Agent（OpenClaw / Kimi Claw / Claude Code 等）参考，用于在用户机器上稳定运行 Pinit Relay Connector。
 
 **核心问题**：connector 是长期运行的 WebSocket 守护进程，不能用 `timeout` 或短 `yieldMs` 启动，否则会在 AI session 结束时被终止。
 
@@ -38,11 +38,11 @@ connector 支持**双模式认证**，理解这一点对于正确部署至关重
 
 1. 客户端显示 `link_code` + `secret`
 2. connector 用 `link_code` + `secret` 调用 `/api/link` 完成配对
-3. 配对成功后，connector 生成 `agent_token` 并保存到 `~/.config/evopaimo/agent.json`
+3. 配对成功后，connector 生成 `agent_token` 并保存到 `~/.config/pinit/agent.json`
 
 **后续重连流程**：
 
-1. connector 检测到 `~/.config/evopaimo/agent.json` 存在
+1. connector 检测到 `~/.config/pinit/agent.json` 存在
 2. 使用 `agent_token` 调用 `/api/agent-auth` 直接认证
 3. **不再需要 `link_code` 和 `secret`**
 
@@ -50,23 +50,23 @@ connector 支持**双模式认证**，理解这一点对于正确部署至关重
 
 - 命令行中的 `--link-code` 和 `--secret` 参数**只在首次配对时有效**
 - 一旦配对成功，即使客户端重启刷新了 `link_code`，connector 依然可以正常连接
-- 如果需要重新配对（换绑），需要先删除 `~/.config/evopaimo/agent.json`
+- 如果需要重新配对（换绑），需要先删除 `~/.config/pinit/agent.json`
 
 **`agent.json` 文件位置**：
 
 ```bash
 # 默认路径
-~/.config/evopaimo/agent.json
+~/.config/pinit/agent.json
 
 # 可通过 --agent-file 参数自定义
-python3 evopaimo-connect.py --agent-file /path/to/agent.json ...
+python3 pinit-connect.py --agent-file /path/to/agent.json ...
 ```
 
 **重新配对（换绑）**：
 
 ```bash
-rm -f ~/.config/evopaimo/agent.json
-python3 evopaimo-connect.py --relay ... --link-code NEW_CODE --secret NEW_SECRET
+rm -f ~/.config/pinit/agent.json
+python3 pinit-connect.py --relay ... --link-code NEW_CODE --secret NEW_SECRET
 ```
 
 ---
@@ -118,9 +118,9 @@ sudo -n true 2>/dev/null && echo "HAS_SUDO" || echo "NO_SUDO"
 ```bash
 mkdir -p ~/.config/systemd/user
 
-cat > ~/.config/systemd/user/evopaimo-connector.service << 'EOF'
+cat > ~/.config/systemd/user/pinit-connector.service << 'EOF'
 [Unit]
-Description=EvoPaimo Relay Connector
+Description=Pinit Relay Connector
 After=network-online.target
 Wants=network-online.target
 
@@ -128,7 +128,7 @@ Wants=network-online.target
 Type=simple
 Environment=OPENCLAW_CLI=__OPENCLAW_PATH__
 WorkingDirectory=__WORKDIR__
-ExecStart=/usr/bin/python3 -u evopaimo-connect.py --relay __RELAY_URL__ --link-code __LINK_CODE__ --secret __SECRET__
+ExecStart=/usr/bin/python3 -u pinit-connect.py --relay __RELAY_URL__ --link-code __LINK_CODE__ --secret __SECRET__
 Restart=always
 RestartSec=5
 StandardOutput=journal
@@ -140,30 +140,30 @@ EOF
 
 # AI 需要用实际值替换占位符:
 # __OPENCLAW_PATH__ = openclaw 的完整路径
-# __WORKDIR__ = evopaimo-connect.py 所在目录
+# __WORKDIR__ = pinit-connect.py 所在目录
 # __RELAY_URL__ = 中转服务器地址
 # __LINK_CODE__ = 绑定码
 # __SECRET__ = 密钥
 
 systemctl --user daemon-reload
-systemctl --user enable evopaimo-connector
-systemctl --user start evopaimo-connector
+systemctl --user enable pinit-connector
+systemctl --user start pinit-connector
 
 # 让用户服务在登出后继续运行（需要一次）
 loginctl enable-linger $(whoami)
 
-systemctl --user status evopaimo-connector
-journalctl --user -u evopaimo-connector -n 20
+systemctl --user status pinit-connector
+journalctl --user -u pinit-connector -n 20
 ```
 
 **管理命令**：
 
 ```bash
-systemctl --user status evopaimo-connector
-journalctl --user -u evopaimo-connector -f
-systemctl --user restart evopaimo-connector
-systemctl --user stop evopaimo-connector
-systemctl --user disable evopaimo-connector
+systemctl --user status pinit-connector
+journalctl --user -u pinit-connector -f
+systemctl --user restart pinit-connector
+systemctl --user stop pinit-connector
+systemctl --user disable pinit-connector
 ```
 
 ---
@@ -177,18 +177,18 @@ systemctl --user disable evopaimo-connector
 **部署步骤**：
 
 ```bash
-cat > ~/Library/LaunchAgents/ai.evopaimo.connector.plist << 'EOF'
+cat > ~/Library/LaunchAgents/ai.pinit.connector.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>ai.evopaimo.connector</string>
+    <string>ai.pinit.connector</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/python3</string>
         <string>-u</string>
-        <string>__WORKDIR__/evopaimo-connect.py</string>
+        <string>__WORKDIR__/pinit-connect.py</string>
         <string>--relay</string>
         <string>__RELAY_URL__</string>
         <string>--link-code</string>
@@ -208,24 +208,24 @@ cat > ~/Library/LaunchAgents/ai.evopaimo.connector.plist << 'EOF'
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>__WORKDIR__/evopaimo.log</string>
+    <string>__WORKDIR__/pinit.log</string>
     <key>StandardErrorPath</key>
-    <string>__WORKDIR__/evopaimo.err</string>
+    <string>__WORKDIR__/pinit.err</string>
 </dict>
 </plist>
 EOF
 
-launchctl load ~/Library/LaunchAgents/ai.evopaimo.connector.plist
-launchctl list | grep evopaimo
-tail -20 __WORKDIR__/evopaimo.log
+launchctl load ~/Library/LaunchAgents/ai.pinit.connector.plist
+launchctl list | grep pinit
+tail -20 __WORKDIR__/pinit.log
 ```
 
 **管理命令**：
 
 ```bash
-launchctl unload ~/Library/LaunchAgents/ai.evopaimo.connector.plist
-launchctl load ~/Library/LaunchAgents/ai.evopaimo.connector.plist
-tail -f __WORKDIR__/evopaimo.log
+launchctl unload ~/Library/LaunchAgents/ai.pinit.connector.plist
+launchctl load ~/Library/LaunchAgents/ai.pinit.connector.plist
+tail -f __WORKDIR__/pinit.log
 ```
 
 ---
@@ -240,22 +240,22 @@ tail -f __WORKDIR__/evopaimo.log
 **部署步骤**：
 
 ```bash
-pkill -f "evopaimo-connect.py" 2>/dev/null || true
-screen -S evopaimo -X quit 2>/dev/null || true
+pkill -f "pinit-connect.py" 2>/dev/null || true
+screen -S pinit -X quit 2>/dev/null || true
 
-screen -dmS evopaimo bash -c 'cd __WORKDIR__ && OPENCLAW_CLI=__OPENCLAW_PATH__ python3 -u evopaimo-connect.py --relay __RELAY_URL__ --link-code __LINK_CODE__ --secret __SECRET__ 2>&1 | tee evopaimo.log'
+screen -dmS pinit bash -c 'cd __WORKDIR__ && OPENCLAW_CLI=__OPENCLAW_PATH__ python3 -u pinit-connect.py --relay __RELAY_URL__ --link-code __LINK_CODE__ --secret __SECRET__ 2>&1 | tee pinit.log'
 
 sleep 3
-screen -list | grep evopaimo
-tail -20 __WORKDIR__/evopaimo.log
+screen -list | grep pinit
+tail -20 __WORKDIR__/pinit.log
 ```
 
 **管理命令**：
 
 ```bash
-screen -r evopaimo                  # 进入查看实时输出
+screen -r pinit                  # 进入查看实时输出
 # Ctrl+A 然后 D                       # 退出但不终止进程
-screen -S evopaimo -X quit           # 终止
+screen -S pinit -X quit           # 终止
 ```
 
 **注意**：screen 会话在系统重启后不会自动恢复，需手动重启或配合 `crontab @reboot`。
@@ -272,22 +272,22 @@ screen -S evopaimo -X quit           # 终止
 **部署步骤**：
 
 ```bash
-pkill -f "evopaimo-connect.py" 2>/dev/null || true
-tmux kill-session -t evopaimo 2>/dev/null || true
+pkill -f "pinit-connect.py" 2>/dev/null || true
+tmux kill-session -t pinit 2>/dev/null || true
 
-tmux new-session -d -s evopaimo "cd __WORKDIR__ && OPENCLAW_CLI=__OPENCLAW_PATH__ python3 -u evopaimo-connect.py --relay __RELAY_URL__ --link-code __LINK_CODE__ --secret __SECRET__ 2>&1 | tee evopaimo.log"
+tmux new-session -d -s pinit "cd __WORKDIR__ && OPENCLAW_CLI=__OPENCLAW_PATH__ python3 -u pinit-connect.py --relay __RELAY_URL__ --link-code __LINK_CODE__ --secret __SECRET__ 2>&1 | tee pinit.log"
 
 sleep 3
-tmux list-sessions | grep evopaimo
-tail -20 __WORKDIR__/evopaimo.log
+tmux list-sessions | grep pinit
+tail -20 __WORKDIR__/pinit.log
 ```
 
 **管理命令**：
 
 ```bash
-tmux attach -t evopaimo              # 进入查看
+tmux attach -t pinit              # 进入查看
 # Ctrl+B 然后 D                        # 退出但不终止
-tmux kill-session -t evopaimo        # 终止
+tmux kill-session -t pinit        # 终止
 ```
 
 ---
@@ -302,29 +302,29 @@ tmux kill-session -t evopaimo        # 终止
 **部署步骤**：
 
 ```bash
-pkill -f "evopaimo-connect.py" 2>/dev/null || true
+pkill -f "pinit-connect.py" 2>/dev/null || true
 sleep 1
 
 cd __WORKDIR__ && \
-OPENCLAW_CLI=__OPENCLAW_PATH__ nohup python3 -u evopaimo-connect.py \
+OPENCLAW_CLI=__OPENCLAW_PATH__ nohup python3 -u pinit-connect.py \
   --relay __RELAY_URL__ \
   --link-code __LINK_CODE__ \
   --secret __SECRET__ \
-  > evopaimo.log 2>&1 & disown
+  > pinit.log 2>&1 & disown
 
-echo $! > evopaimo.pid
+echo $! > pinit.pid
 
 sleep 3
-ps -p $(cat evopaimo.pid) && echo "进程运行中"
-tail -20 evopaimo.log
+ps -p $(cat pinit.pid) && echo "进程运行中"
+tail -20 pinit.log
 ```
 
 **管理命令**：
 
 ```bash
-ps -p $(cat __WORKDIR__/evopaimo.pid) 2>/dev/null && echo "运行中" || echo "已停止"
-tail -f __WORKDIR__/evopaimo.log
-kill $(cat __WORKDIR__/evopaimo.pid)
+ps -p $(cat __WORKDIR__/pinit.pid) 2>/dev/null && echo "运行中" || echo "已停止"
+tail -f __WORKDIR__/pinit.log
+kill $(cat __WORKDIR__/pinit.pid)
 ```
 
 **注意**：nohup 方案在系统重启后不会自动恢复。
@@ -337,10 +337,10 @@ kill $(cat __WORKDIR__/evopaimo.pid)
 
 ```bash
 # 1. 检查进程存在
-ps aux | grep "evopaimo-connect" | grep -v grep
+ps aux | grep "pinit-connect" | grep -v grep
 
 # 2. 检查日志中是否有成功连接的标志
-grep -E "已连接|connected|等待客户端" __WORKDIR__/evopaimo.log | tail -5
+grep -E "已连接|connected|等待客户端" __WORKDIR__/pinit.log | tail -5
 
 # 3. 如果日志显示以下内容，说明成功：
 #    [OK] 配对成功，App ID: openclaw_xxxxxx
@@ -359,19 +359,19 @@ grep -E "已连接|connected|等待客户端" __WORKDIR__/evopaimo.log | tail -5
 **这是最容易被忽略但最常见的问题**：用户机器上可能有多个 connector 实例在竞争连接。
 
 ```bash
-# 必须首先执行！查找所有正在运行的 evopaimo（含旧 xiachong）相关进程
-ps aux | grep -E "evopaimo|xiachong|connector" | grep -v grep
+# 必须首先执行！查找所有正在运行的 pinit 相关进程
+ps aux | grep -E "pinit|connector" | grep -v grep
 
 # 检查 systemd 服务（即使用户说"没配置过"也要检查！用户可能忘了）
-systemctl --user list-units --all | grep -iE "evopaimo|xiachong" 2>/dev/null || echo "无 systemd 用户服务"
-systemctl list-units --all | grep -iE "evopaimo|xiachong" 2>/dev/null || echo "无 systemd 系统服务"
+systemctl --user list-units --all | grep -iE "pinit" 2>/dev/null || echo "无 systemd 用户服务"
+systemctl list-units --all | grep -iE "pinit" 2>/dev/null || echo "无 systemd 系统服务"
 
 # 检查 launchd（macOS）
-launchctl list 2>/dev/null | grep -iE "evopaimo|xiachong" || echo "无 launchd 服务"
+launchctl list 2>/dev/null | grep -iE "pinit" || echo "无 launchd 服务"
 
 # 检查 screen/tmux 会话
-screen -list 2>/dev/null | grep -iE "evopaimo|xiachong" || echo "无 screen 会话"
-tmux list-sessions 2>/dev/null | grep -iE "evopaimo|xiachong" || echo "无 tmux 会话"
+screen -list 2>/dev/null | grep -iE "pinit" || echo "无 screen 会话"
+tmux list-sessions 2>/dev/null | grep -iE "pinit" || echo "无 tmux 会话"
 ```
 
 **诊断逻辑**：
@@ -384,20 +384,18 @@ tmux list-sessions 2>/dev/null | grep -iE "evopaimo|xiachong" || echo "无 tmux 
 
 ```bash
 # 1. 停止所有冲突进程
-systemctl --user stop evopaimo-connector 2>/dev/null || true
-systemctl --user stop xiachong-connector 2>/dev/null || true  # 旧版本兼容
-systemctl --user stop xiachong-relay 2>/dev/null || true       # 更旧版本兼容
-pkill -f "evopaimo-connect" 2>/dev/null || true
-pkill -f "xiachong-connect" 2>/dev/null || true                # 旧版本兼容
-screen -S evopaimo -X quit 2>/dev/null || true
-tmux kill-session -t evopaimo 2>/dev/null || true
+systemctl --user stop pinit-connector 2>/dev/null || true
+systemctl --user stop pinit-relay 2>/dev/null || true
+pkill -f "pinit-connect" 2>/dev/null || true
+screen -S pinit -X quit 2>/dev/null || true
+tmux kill-session -t pinit 2>/dev/null || true
 
 # 2. 确认已清理干净
-ps aux | grep -E "evopaimo|xiachong|connector" | grep -v grep
+ps aux | grep -E "pinit|connector" | grep -v grep
 # 应该没有输出
 
 # 3. 删除可能冲突的旧凭证
-rm -f ~/.config/evopaimo/agent.json
+rm -f ~/.config/pinit/agent.json
 
 # 4. 现在才开始重新配对
 ```
@@ -405,7 +403,7 @@ rm -f ~/.config/evopaimo/agent.json
 ### 诊断第二步：检查凭证状态
 
 ```bash
-cat ~/.config/evopaimo/agent.json 2>/dev/null && echo "--- 上方是现有凭证 ---" || echo "无 agent.json，需要首次配对"
+cat ~/.config/pinit/agent.json 2>/dev/null && echo "--- 上方是现有凭证 ---" || echo "无 agent.json，需要首次配对"
 ```
 
 **诊断逻辑**：
@@ -418,14 +416,14 @@ cat ~/.config/evopaimo/agent.json 2>/dev/null && echo "--- 上方是现有凭证
 
 ```bash
 # systemd
-journalctl --user -u evopaimo-connector -n 50 --no-pager 2>/dev/null || true
+journalctl --user -u pinit-connector -n 50 --no-pager 2>/dev/null || true
 
 # 日志文件
-tail -50 ~/evopaimo.log 2>/dev/null || true
-tail -50 ~/.evopaimo/evopaimo.log 2>/dev/null || true
+tail -50 ~/pinit.log 2>/dev/null || true
+tail -50 ~/.pinit/pinit.log 2>/dev/null || true
 
 # 查找关键错误模式
-grep -E "error|Error|失败|断开|Invalid|expired|conflict" ~/evopaimo.log 2>/dev/null | tail -20
+grep -E "error|Error|失败|断开|Invalid|expired|conflict" ~/pinit.log 2>/dev/null | tail -20
 ```
 
 **常见错误及含义**：
@@ -444,12 +442,12 @@ grep -E "error|Error|失败|断开|Invalid|expired|conflict" ~/evopaimo.log 2>/d
 
 ```bash
 # 一条命令看清当前状态
-python3 evopaimo-connect.py status
+python3 pinit-connect.py status
 ```
 
 输出会包含：
 
-- relay 凭证状态（是否有 `~/.config/evopaimo/agent.json`）
+- relay 凭证状态（是否有 `~/.config/pinit/agent.json`）
 - OpenClaw CLI 路径（找不到时会用红字提示，且 exit code = 1）
 
 如果 status 报告找不到 `openclaw`：
@@ -464,7 +462,7 @@ echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
 # 方法 2：在启动命令中指定 OPENCLAW_CLI 环境变量
-OPENCLAW_CLI=/home/user/.npm-global/bin/openclaw python3 -u evopaimo-connect.py ...
+OPENCLAW_CLI=/home/user/.npm-global/bin/openclaw python3 -u pinit-connect.py ...
 ```
 
 ### 诊断第五步：网络连通性
@@ -472,7 +470,7 @@ OPENCLAW_CLI=/home/user/.npm-global/bin/openclaw python3 -u evopaimo-connect.py 
 ```bash
 # 检查是否能访问 relay 服务器
 curl -s -o /dev/null -w "%{http_code}" https://primo.evomap.ai/health || echo "无法访问 staging"
-curl -s -o /dev/null -w "%{http_code}" https://xiachong-api.aged-sea-ee35.workers.dev/health || echo "无法访问 production"
+curl -s -o /dev/null -w "%{http_code}" https://pinit-api.aged-sea-ee35.workers.dev/health || echo "无法访问 production"
 
 # 检查 DNS 解析
 nslookup primo.evomap.ai 2>/dev/null || host primo.evomap.ai 2>/dev/null || echo "DNS 解析失败"
@@ -505,12 +503,12 @@ pip3 install --user websockets requests
 **解决**：
 
 ```bash
-tail -50 __WORKDIR__/evopaimo.log | grep -E "error|Error|失败|断开"
+tail -50 __WORKDIR__/pinit.log | grep -E "error|Error|失败|断开"
 
-cat ~/.config/evopaimo/agent.json 2>/dev/null || echo "无 agent.json，将使用 link-code 配对"
+cat ~/.config/pinit/agent.json 2>/dev/null || echo "无 agent.json，将使用 link-code 配对"
 
 # 如果 agent_token 失效，删除后用新的 link-code 重新配对
-rm -f ~/.config/evopaimo/agent.json
+rm -f ~/.config/pinit/agent.json
 ```
 
 ### 问题：客户端重启后 connector 无法连接
@@ -522,28 +520,28 @@ rm -f ~/.config/evopaimo/agent.json
 **解决**：
 
 ```bash
-rm -f ~/.config/evopaimo/agent.json
+rm -f ~/.config/pinit/agent.json
 # 从客户端获取新的 link-code 和 secret，然后重启服务
-systemctl --user restart evopaimo-connector  # 如果用 systemd
+systemctl --user restart pinit-connector  # 如果用 systemd
 ```
 
 ### 问题：需要更换绑定的客户端账号
 
 ```bash
-rm -f ~/.config/evopaimo/agent.json
+rm -f ~/.config/pinit/agent.json
 
 # 更新服务配置中的 link-code 和 secret（如果用 systemd）
-nano ~/.config/systemd/user/evopaimo-connector.service
+nano ~/.config/systemd/user/pinit-connector.service
 
 systemctl --user daemon-reload
-systemctl --user restart evopaimo-connector
+systemctl --user restart pinit-connector
 ```
 
 ### 问题：systemd 服务无法启动
 
 ```bash
-systemctl --user status evopaimo-connector
-journalctl --user -u evopaimo-connector -n 50
+systemctl --user status pinit-connector
+journalctl --user -u pinit-connector -n 50
 
 # 常见原因：路径错误、权限问题
 # 确保 WorkingDirectory 和 ExecStart 中的路径都是绝对路径
@@ -565,7 +563,7 @@ journalctl --user -u evopaimo-connector -n 50
 - 不要对启动命令设置 `timeout` 参数
 - 不要依赖 `background: true` + `yieldMs` 来保持进程
 - 必须让进程脱离 AI session 的生命周期控制
-- 首次配对成功后会生成 `~/.config/evopaimo/agent.json`，后续重连不再需要 `link-code`
+- 首次配对成功后会生成 `~/.config/pinit/agent.json`，后续重连不再需要 `link-code`
 - 客户端重启刷新 `link-code` 不会影响已配对的 connector
 
 ---

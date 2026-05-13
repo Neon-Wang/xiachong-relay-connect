@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Attack simulator for the @evopaimo/channel built artifact.
+// Attack simulator for the @pinit/channel built artifact.
 // Runs all P0/P1 attack scenarios against the *built* dist/index.js so
 // we are testing the exact code that ships to users, not just the source.
 // (Currently the artifact ships via R2 + GitHub Release tarball; npm
@@ -18,11 +18,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Resolve which built artifact to attack:
-//   1. EVOPAIMO_DIST env var (absolute path to dist/internals.js or its dir)
+//   1. PINIT_DIST env var (absolute path to dist/internals.js or its dir)
 //   2. ../dist/internals.js relative to this script (default for repo dev)
 let distPath;
-if (process.env.EVOPAIMO_DIST) {
-  const candidate = process.env.EVOPAIMO_DIST;
+if (process.env.PINIT_DIST) {
+  const candidate = process.env.PINIT_DIST;
   distPath = candidate.endsWith(".js")
     ? candidate
     : resolve(candidate, "internals.js");
@@ -91,27 +91,27 @@ function expectEqual(name, fn, expected) {
 // ── A. relayUrl scheme attacks ─────────────────────────────────────────────
 expectThrow(
   "A1. http:// relay rejected at startup (cleartext credential interception)",
-  () => resolveAccount({ channels: { evopaimo: { relayUrl: "http://attacker.evil/" } } }),
+  () => resolveAccount({ channels: { pinit: { relayUrl: "http://attacker.evil/" } } }),
   "https://",
 );
 expectThrow(
   "A2. ws:// relay rejected (skip TLS entirely)",
-  () => resolveAccount({ channels: { evopaimo: { relayUrl: "ws://attacker.evil/" } } }),
+  () => resolveAccount({ channels: { pinit: { relayUrl: "ws://attacker.evil/" } } }),
   "https://",
 );
 expectThrow(
   "A3. file:// relay rejected (local path injection)",
-  () => resolveAccount({ channels: { evopaimo: { relayUrl: "file:///etc/passwd" } } }),
+  () => resolveAccount({ channels: { pinit: { relayUrl: "file:///etc/passwd" } } }),
   "https://",
 );
 expectThrow(
   "A4. javascript: relay rejected",
-  () => resolveAccount({ channels: { evopaimo: { relayUrl: "javascript:alert(1)" } } }),
+  () => resolveAccount({ channels: { pinit: { relayUrl: "javascript:alert(1)" } } }),
   "https://",
 );
 expectThrow(
   "A5. malformed URL rejected with clear error",
-  () => resolveAccount({ channels: { evopaimo: { relayUrl: "not a url" } } }),
+  () => resolveAccount({ channels: { pinit: { relayUrl: "not a url" } } }),
   "valid URL",
 );
 
@@ -330,7 +330,7 @@ expectEqual(
   () =>
     resolveAccount({
       channels: {
-        evopaimo: {
+        pinit: {
           relayUrl: "https://primo.evomap.ai",
           linkCode: "DUMMY1",
           secret: "0".repeat(64),

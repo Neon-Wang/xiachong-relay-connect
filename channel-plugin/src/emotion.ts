@@ -6,7 +6,7 @@ import { normalizeEmotion, type Emotion } from "./protocol.js";
  * to treating the reply as free-form text when parsing fails, so the plugin
  * is graceful when the agent ignores the format hint.
  *
- * Mirrors `parse_reply` in evopaimo-connect.py.
+ * Mirrors `parse_reply` in pinit-connect.py.
  */
 export function parseEmotionReply(raw: string): {
   emotion: Emotion;

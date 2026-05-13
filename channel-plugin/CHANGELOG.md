@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@evopaimo/channel` will be documented here. This
+All notable changes to `@pinit/channel` will be documented here. This
 project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -12,7 +12,7 @@ Dates are UTC (YYYY-MM-DD).
 
 - Fixed installed channel plugin device reporting so `plugin_version` is
   read from the packaged `package.json` next to `dist/`, allowing the
-  website's client connection page to show the actual EvoPaimo plugin
+  website's client connection page to show the actual Pinit plugin
   version instead of a blank value.
 - Tightened `init_request.prompts[].expect` parsing so non-string values
   are rejected instead of being silently treated as empty, keeping the
@@ -131,14 +131,14 @@ the "connector-as-channel-plugin" effort
   normal operation (no more `auto-restart attempt N/10` loop).
 - Relay WebSocket client (`src/runtime/ws-client.ts`) with
   exponential backoff reconnect and reactive `ping`/`pong` handling
-  that mirrors the Python `evopaimo-connect.py` wire protocol.
+  that mirrors the Python `pinit-connect.py` wire protocol.
 - HTTP pairing flow (`src/runtime/pairing.ts`) reusing the existing
   `/api/link` + `/api/agent-auth` endpoints on the Cloudflare Workers
   relay. The plugin persists `agent_token` + `appId` + `agentId`
   locally so re-pairing is needed only when the token is revoked.
-- Persistence under `~/.openclaw/channels/evopaimo/state-<accountId>.json`
+- Persistence under `~/.openclaw/channels/pinit/state-<accountId>.json`
   (mode `0600`), with **automatic migration** from the legacy location
-  `~/.openclaw/extensions/evopaimo/` so upgrading the plugin never
+  `~/.openclaw/extensions/pinit/` so upgrading the plugin never
   strands existing agents.
 - Inbound dispatch (`src/runtime/dispatch.ts`) wraps user messages in
   the `EMOTION_PROMPT` envelope and parses the LLM's strict-JSON reply
@@ -146,7 +146,7 @@ the "connector-as-channel-plugin" effort
   behavior, so the Electron client sees no observable wire change.
 - Unit tests covering protocol parsing, emotion envelope, DM policy
   resolution, and pairing happy-path + credential rotation.
-- Manifest (`openclaw.plugin.json`) + scoped config schema (`channels.evopaimo.*`).
+- Manifest (`openclaw.plugin.json`) + scoped config schema (`channels.pinit.*`).
 - Vite-style build via `tsup` producing ESM-only output and `.d.ts`
   bundles, consumable by OpenClaw's plugin loader.
 
@@ -157,12 +157,12 @@ the "connector-as-channel-plugin" effort
   `pairing.ts` reads a local file and issues `fetch`). This is the
   intended `agent_token` persistence + relay handshake path and has
   been audited. Operators can ignore the warning.
-- First-time `openclaw plugins install @evopaimo/channel` needs the
-  `channels.evopaimo` section present in `~/.openclaw/openclaw.json`
+- First-time `openclaw plugins install @pinit/channel` needs the
+  `channels.pinit` section present in `~/.openclaw/openclaw.json`
   **before** install runs the config audit. See the plugin README's
   "Re-install gotcha" for the one-liner that temporarily strips the
   block for a clean install.
 
-[Unreleased]: https://github.com/EvoMap/XiaChong/compare/channel-plugin-v0.1.1...HEAD
-[0.1.1]: https://github.com/EvoMap/XiaChong/compare/channel-plugin-v0.1.0...channel-plugin-v0.1.1
-[0.1.0]: https://github.com/EvoMap/XiaChong/releases/tag/channel-plugin-v0.1.0
+[Unreleased]: https://github.com/EvoMap/Pinit/compare/channel-plugin-v0.1.1...HEAD
+[0.1.1]: https://github.com/EvoMap/Pinit/compare/channel-plugin-v0.1.0...channel-plugin-v0.1.1
+[0.1.0]: https://github.com/EvoMap/Pinit/releases/tag/channel-plugin-v0.1.0

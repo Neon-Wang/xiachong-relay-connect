@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-E2E test client for evopaimo-connect.
+E2E test client for pinit-connect.
 
-Role: simulates the EvoPaimo client (i.e. the Electron app side) so we can
+Role: simulates the Pinit client (i.e. the Electron app side) so we can
 verify the full loop without needing a real user/device:
 
   this-script  ──(POST /api/register)──▶  Workers            [get link_code+secret+client-token]
@@ -97,7 +97,7 @@ async def send_and_wait(
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="E2E test client simulator for evopaimo-connect")
+    ap = argparse.ArgumentParser(description="E2E test client simulator for pinit-connect")
     ap.add_argument("--relay", default=DEFAULT_RELAY)
     ap.add_argument("--message", default="ping from e2e-test-client", help="test message to send")
     ap.add_argument("--idle-timeout", type=float, default=60.0, help="seconds without activity before giving up")
@@ -123,7 +123,7 @@ def main() -> int:
         print(f"[client] client_token={client_token}", flush=True)
         print(f"[client] ---", flush=True)
         print(f"[client] START CONNECTOR:", flush=True)
-        print(f"[client]   evopaimo-connect --relay {args.relay} --link-code {link_code} --secret {secret}", flush=True)
+        print(f"[client]   pinit-connect --relay {args.relay} --link-code {link_code} --secret {secret}", flush=True)
         print(f"[client] ---", flush=True)
 
     if args.cmd == "register":

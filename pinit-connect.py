@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EvoPaimo Relay Connector (Secure Channel Worker)
+Pinit Relay Connector (Secure Channel Worker)
 
 ================================================================================
 安全声明 / Security Declaration
@@ -23,7 +23,7 @@ EvoPaimo Relay Connector (Secure Channel Worker)
 
 【本脚本没有做什么】
   - 不执行任何系统命令（除了调用 openclaw CLI 本身）
-  - 不读写任何文件（除了 ~/.config/evopaimo/ 下的 agent 凭证文件和标准输出日志）
+  - 不读写任何文件（除了 ~/.config/pinit/ 下的 agent 凭证文件和标准输出日志）
   - **不监听任何端口，不启动任何服务器**
   - 不直接连接 OpenClaw Gateway WebSocket
   - 不持有、不请求任何系统级权限
@@ -60,13 +60,13 @@ EvoPaimo Relay Connector (Secure Channel Worker)
 
 用法:
     # 1. 启动连接（首次需 link-code + secret 配对，之后会自动用保存的 agent_token）
-    evopaimo-connect \\
+    pinit-connect \\
         --relay https://primo.evomap.ai \\
         --link-code A7X9K2 \\
         --secret f3a8b1c2d4e5
 
     # 2. 查看 connector / OpenClaw CLI 状态
-    evopaimo-connect status
+    pinit-connect status
 """
 
 import argparse
@@ -128,7 +128,7 @@ else:
     OPENCLAW_CLI = "openclaw"
 
 DEFAULT_SESSION_LABEL = os.getenv("OPENCLAW_SESSION_LABEL", "mobile-app")
-DEFAULT_AGENT_FILE = os.path.expanduser("~/.config/evopaimo/agent.json")
+DEFAULT_AGENT_FILE = os.path.expanduser("~/.config/pinit/agent.json")
 WS_CLOSE_UNBOUND = 4004
 
 VALID_EMOTIONS = {"speechless", "angry", "shy", "sad", "happy", "neutral"}
@@ -546,7 +546,7 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
         except RelayPairingError as e:
             if e.status_code == 410:
                 remove_agent_file(agent_file)
-                print("[!] 当前设备已解绑，请在 EvoPaimo 客户端重新绑定 OpenClaw 后再启动 connector。")
+                print("[!] 当前设备已解绑，请在 Pinit 客户端重新绑定 OpenClaw 后再启动 connector。")
                 return
             raise
         token = result["token"]
@@ -585,7 +585,7 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
         except RelayPairingError as e:
             if e.status_code == 410:
                 remove_agent_file(agent_file)
-                print("[!] 当前设备已解绑，请在 EvoPaimo 客户端重新绑定 OpenClaw 后再启动 connector。")
+                print("[!] 当前设备已解绑，请在 Pinit 客户端重新绑定 OpenClaw 后再启动 connector。")
                 return False
             print(f"[!] relay token 刷新失败: {e}")
             return False
@@ -730,7 +730,7 @@ async def run(relay_url: str, link_code: str, secret: str, label: str, agent_fil
 def cmd_status(args) -> int:
     """诊断子命令：输出 connector 配对状态 + OpenClaw CLI 可用性"""
     print("=" * 60)
-    print("  EvoPaimo Connector — Status")
+    print("  Pinit Connector — Status")
     print("=" * 60)
     print()
 
@@ -770,7 +770,7 @@ def cmd_status(args) -> int:
 def cmd_run(args) -> int:
     """主运行子命令（默认）"""
     print("=" * 60)
-    print("  EvoPaimo Relay Connector")
+    print("  Pinit Relay Connector")
     print("=" * 60)
     print(f"  中转服务器: {args.relay}")
     print(f"  Link Code:  {args.link_code}")
@@ -790,7 +790,7 @@ def cmd_run(args) -> int:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="将你的 OpenClaw 连接到 EvoPaimo 中转服务器",
+        description="将你的 OpenClaw 连接到 Pinit 中转服务器",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="cmd", required=False)

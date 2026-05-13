@@ -1,5 +1,5 @@
 /**
- * Security regression tests for @evopaimo/channel.
+ * Security regression tests for @pinit/channel.
  *
  * These tests model an attacker who can either (a) spoof the relay server
  * (e.g. via DNS hijack, MITM, or a user mistakenly configuring the wrong
@@ -40,7 +40,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
       resolveAccount(
         {
           channels: {
-            evopaimo: {
+            pinit: {
               relayUrl: "http://primo.evomap.ai",
               linkCode: "abc123",
               secret: "deadbeefcafebabe",
@@ -57,7 +57,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
       resolveAccount(
         {
           channels: {
-            evopaimo: {
+            pinit: {
               relayUrl: "ws://primo.evomap.ai",
               linkCode: "abc123",
               secret: "deadbeefcafebabe",
@@ -75,7 +75,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
         resolveAccount(
           {
             channels: {
-              evopaimo: {
+              pinit: {
                 relayUrl: scheme,
                 linkCode: "abc123",
                 secret: "deadbeefcafebabe",
@@ -93,7 +93,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
       resolveAccount(
         {
           channels: {
-            evopaimo: {
+            pinit: {
               relayUrl: "https://primo.evomap.ai",
               linkCode: "abc123",
               secret: "deadbeefcafebabe",
@@ -110,7 +110,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
       resolveAccount(
         {
           channels: {
-            evopaimo: {
+            pinit: {
               relayUrl: "not a url at all",
               linkCode: "abc123",
               secret: "deadbeefcafebabe",

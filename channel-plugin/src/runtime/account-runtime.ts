@@ -48,7 +48,7 @@ import {
   type WsClientLogger,
 } from "./ws-client.js";
 
-const CHANNEL_ID = "evopaimo";
+const CHANNEL_ID = "pinit";
 
 /**
  * Best-effort read of the plugin version from the bundled `package.json`.
@@ -83,7 +83,7 @@ function currentDeviceInfo(): DeviceInfo {
 }
 
 /** Registry of active per-(account) runtimes keyed by accountId. */
-const REGISTRY = new Map<string, EvoPaimoAccountRuntime>();
+const REGISTRY = new Map<string, PinitAccountRuntime>();
 
 function adaptLogSink(log: ChannelGatewayContext<ResolvedAccount>["log"]): GatewayLogSink {
   return {
@@ -113,12 +113,12 @@ function adaptPairingLogger(log: ChannelGatewayContext<ResolvedAccount>["log"]):
 }
 
 function formatMeta(message: string, meta?: Record<string, unknown>): string {
-  if (!meta || Object.keys(meta).length === 0) return `evopaimo-ws: ${message}`;
+  if (!meta || Object.keys(meta).length === 0) return `pinit-ws: ${message}`;
   const parts: string[] = [];
   for (const [k, v] of Object.entries(meta)) {
     parts.push(`${k}=${safeStringify(v)}`);
   }
-  return `evopaimo-ws: ${message} ${parts.join(" ")}`;
+  return `pinit-ws: ${message} ${parts.join(" ")}`;
 }
 
 function safeStringify(v: unknown): string {
@@ -143,7 +143,7 @@ function safeStringify(v: unknown): string {
  * We therefore hold a `donePromise` that we resolve from `stop()` or when a
  * fatal/non-recoverable error bubbles up.
  */
-class EvoPaimoAccountRuntime {
+class PinitAccountRuntime {
   readonly accountId: string;
   private readonly dispatchCtx: DispatchContext;
   private readonly client: RelayWsClient;
@@ -165,7 +165,7 @@ class EvoPaimoAccountRuntime {
 
     if (!ctx.channelRuntime) {
       throw new Error(
-        "evopaimo: channelRuntime is unavailable (requires OpenClaw Plugin SDK >= 2026.2.19).",
+        "pinit: channelRuntime is unavailable (requires OpenClaw Plugin SDK >= 2026.2.19).",
       );
     }
 
@@ -196,7 +196,7 @@ class EvoPaimoAccountRuntime {
         deviceInfo: currentDeviceInfo(),
       });
       ctx.log?.info?.(
-        `evopaimo: paired via ${result.via} (appId=${result.appId || "?"} agentId=${result.agentId || "?"})`,
+        `pinit: paired via ${result.via} (appId=${result.appId || "?"} agentId=${result.agentId || "?"})`,
       );
       return result.token;
     };
@@ -315,7 +315,7 @@ class EvoPaimoAccountRuntime {
   private async handleFrame(frame: InboundFrame): Promise<void> {
     if (this.stopped) return;
     if (frame.type === "ping") {
-      this.dispatchCtx.log?.debug?.(`evopaimo: <- ping (accountId=${this.accountId})`);
+      this.dispatchCtx.log?.debug?.(`pinit: <- ping (accountId=${this.accountId})`);
       return;
     }
     // Log ANY non-ping inbound so operators can observe the wire without enabling
@@ -329,7 +329,7 @@ class EvoPaimoAccountRuntime {
         .replace(/[\u0000-\u001f\u007f]/g, " ")
         .replace(/\s+/g, " ");
       this.dispatchCtx.log?.info?.(
-        `evopaimo: <- message from=${safeFrom} content="${preview}${frame.content.length > 80 ? "…" : ""}"`,
+        `pinit: <- message from=${safeFrom} content="${preview}${frame.content.length > 80 ? "…" : ""}"`,
       );
       await this.handleMessage(frame.content, safeFrom);
       return;
@@ -337,13 +337,13 @@ class EvoPaimoAccountRuntime {
     if (frame.type === "init_request") {
       const safeAgent = sanitizeAgentId(frame.agent_id);
       this.dispatchCtx.log?.info?.(
-        `evopaimo: <- init_request agentId=${safeAgent} steps=${frame.prompts.length}`,
+        `pinit: <- init_request agentId=${safeAgent} steps=${frame.prompts.length}`,
       );
       this.enqueueInit(safeAgent, frame.prompts);
       return;
     }
     this.dispatchCtx.log?.warn?.(
-      `evopaimo: ignored unknown inbound frame type=${String((frame as { type: unknown }).type)}`,
+      `pinit: ignored unknown inbound frame type=${String((frame as { type: unknown }).type)}`,
     );
   }
 
@@ -352,16 +352,16 @@ class EvoPaimoAccountRuntime {
       const result = await dispatchInboundMessage(this.dispatchCtx, content, from);
       if (result.frame) {
         this.dispatchCtx.log?.info?.(
-          `evopaimo: -> message emotion=${result.frame.emotion} tts_len=${result.frame.tts_text?.length ?? 0} content_len=${result.frame.content.length}`,
+          `pinit: -> message emotion=${result.frame.emotion} tts_len=${result.frame.tts_text?.length ?? 0} content_len=${result.frame.content.length}`,
         );
         this.sendOutbound(result.frame);
       } else if (result.errorMessage) {
         this.dispatchCtx.log?.error?.(
-          `evopaimo: no reply frame produced (error=${result.errorMessage})`,
+          `pinit: no reply frame produced (error=${result.errorMessage})`,
         );
       }
     } catch (err) {
-      this.dispatchCtx.log?.error?.(`evopaimo: dispatch crashed: ${String(err)}`);
+      this.dispatchCtx.log?.error?.(`pinit: dispatch crashed: ${String(err)}`);
     }
   }
 
@@ -390,7 +390,7 @@ class EvoPaimoAccountRuntime {
             this.sendOutbound(frame);
           } catch (err) {
             this.dispatchCtx.log?.error?.(
-              `evopaimo init step ${step} failed: ${String(err)}`,
+              `pinit init step ${step} failed: ${String(err)}`,
             );
             this.sendOutbound({
               type: "init_response",
@@ -408,14 +408,14 @@ class EvoPaimoAccountRuntime {
     const ok = this.client.sendFrame(frame);
     if (!ok) {
       this.dispatchCtx.log?.warn?.(
-        `evopaimo: dropped outbound frame (type=${frame.type}) — socket not open`,
+        `pinit: dropped outbound frame (type=${frame.type}) — socket not open`,
       );
     }
   }
 }
 
 /** Look up whether an account is currently running (primarily for tests). */
-export function getAccountRuntime(accountId: string): EvoPaimoAccountRuntime | undefined {
+export function getAccountRuntime(accountId: string): PinitAccountRuntime | undefined {
   return REGISTRY.get(accountId);
 }
 
@@ -431,18 +431,18 @@ export async function runAccount(
   const existing = REGISTRY.get(ctx.accountId);
   if (existing) {
     ctx.log?.warn?.(
-      `evopaimo: startAccount called for ${ctx.accountId} which is already running; awaiting its existing run promise.`,
+      `pinit: startAccount called for ${ctx.accountId} which is already running; awaiting its existing run promise.`,
     );
     await existing.donePromiseForGateway;
     return;
   }
-  const runtime = new EvoPaimoAccountRuntime(ctx);
+  const runtime = new PinitAccountRuntime(ctx);
   REGISTRY.set(ctx.accountId, runtime);
   ctx.log?.info?.(
-    `evopaimo: started account ${ctx.accountId} (relay=${ctx.account.relayUrl}, session=${ctx.account.sessionLabel})`,
+    `pinit: started account ${ctx.accountId} (relay=${ctx.account.relayUrl}, session=${ctx.account.sessionLabel})`,
   );
   await runtime.run();
-  ctx.log?.info?.(`evopaimo: account ${ctx.accountId} run() resolved`);
+  ctx.log?.info?.(`pinit: account ${ctx.accountId} run() resolved`);
 }
 
 export async function stopAccountRuntime(
@@ -450,14 +450,14 @@ export async function stopAccountRuntime(
 ): Promise<void> {
   const runtime = REGISTRY.get(ctx.accountId);
   if (!runtime) {
-    ctx.log?.info?.(`evopaimo: stopAccount for ${ctx.accountId} — no runtime recorded.`);
+    ctx.log?.info?.(`pinit: stopAccount for ${ctx.accountId} — no runtime recorded.`);
     return;
   }
   await runtime.stop();
-  ctx.log?.info?.(`evopaimo: stopped account ${ctx.accountId}`);
+  ctx.log?.info?.(`pinit: stopped account ${ctx.accountId}`);
 }
 
-export const evopaimoGatewayAdapter = {
+export const pinitGatewayAdapter = {
   channelId: CHANNEL_ID,
   async startAccount(ctx: ChannelGatewayContext<ResolvedAccount>) {
     await runAccount(ctx);

@@ -2,7 +2,7 @@
  * Pairing: exchange `linkCode + secret` (or a saved `agent_token`) for a
  * short-lived relay `token` that authorises the WebSocket connection.
  *
- * Mirrors Phase 1 `evopaimo-connect.py`:
+ * Mirrors Phase 1 `pinit-connect.py`:
  *   1. First run  → POST /api/link        { link_code, secret, agent_token }
  *                                          → { token, app_id, agent_id }
  *      We generate `agent_token` locally (64-hex) and persist it.
@@ -11,7 +11,7 @@
  *      If the relay rejects the stored `agent_token` (e.g. agent deleted),
  *      fall back to the `/api/link` flow automatically.
  *
- * Persistence lives under `~/.openclaw/extensions/evopaimo/state-<accountId>.json`
+ * Persistence lives under `~/.openclaw/extensions/pinit/state-<accountId>.json`
  * with `0600` permissions; we never log secrets or tokens to gateway logs.
  */
 
@@ -147,10 +147,10 @@ export function buildDeviceInfo(pluginVersion?: string): DeviceInfo {
 }
 
 /**
- * Default state directory = `~/.openclaw/channels/evopaimo`.
+ * Default state directory = `~/.openclaw/channels/pinit`.
  *
- * Intentionally placed *outside* `extensions/evopaimo/` so plugin upgrades
- * (`openclaw plugins install --force`) do not clobber the stored
+ * Intentionally placed *outside* `extensions/pinit/` so plugin upgrades
+ * that replace `~/.openclaw/extensions/pinit/` do not clobber the stored
  * `agent_token`.
  *
  * We also avoid reading any environment variables here — the OpenClaw
@@ -159,7 +159,7 @@ export function buildDeviceInfo(pluginVersion?: string): DeviceInfo {
  * directory pass `stateDir` explicitly through `PairingOptions`.
  */
 export function defaultStateDir(): string {
-  return path.join(os.homedir(), ".openclaw", "channels", "evopaimo");
+  return path.join(os.homedir(), ".openclaw", "channels", "pinit");
 }
 
 function stateFilePath(stateDir: string, accountId: string): string {
@@ -177,20 +177,20 @@ async function readStoredCredentials(
   if (attempt !== "missing") return attempt;
 
   // Migration: versions <= 0.1.0 stored state under
-  // `~/.openclaw/extensions/evopaimo/`. If we find a legacy file, adopt it
+  // `~/.openclaw/extensions/pinit/`. If we find a legacy file, adopt it
   // and persist to the new location on the next write.
   const legacy = path.join(
     os.homedir(),
     ".openclaw",
     "extensions",
-    "evopaimo",
+    "pinit",
     `state-${accountId.replace(/[^a-zA-Z0-9_.-]+/g, "_")}.json`,
   );
   if (legacy !== file) {
     const legacyResult = await tryReadFile(legacy, logger);
     if (legacyResult !== "missing") {
       if (legacyResult) {
-        logger?.info?.("migrated stored agent_token from extensions/evopaimo/", {
+        logger?.info?.("migrated stored agent_token from extensions/pinit/", {
           accountId,
         });
       }

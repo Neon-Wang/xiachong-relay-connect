@@ -1,6 +1,6 @@
 /**
- * EvoPaimo relay WebSocket protocol constants (mirrored from
- * connector/evopaimo-connect.py so the Phase 1 CLI connector and Phase 2
+ * Pinit relay WebSocket protocol constants (mirrored from
+ * connector/pinit-connect.py so the Phase 1 CLI connector and Phase 2
  * channel plugin speak identical frames to the Cloudflare Workers relay).
  *
  * Change either side and the other one MUST follow — it is the single
@@ -20,7 +20,7 @@ export const MAX_MESSAGE_LENGTH = 50_000;
  *   - OOM the gateway process (single huge prompt string)
  *   - block the init queue forever (unbounded `expect` text round-trips back)
  *
- * Numbers are derived from the legitimate use case: the EvoPaimo soul-init
+ * Numbers are derived from the legitimate use case: the Pinit soul-init
  * pipeline emits at most ~10 prompts per character, each well under 8 KiB.
  * A 32-prompt × 32 KiB ceiling leaves room for future expansion while
  * staying ~6 orders of magnitude below "DoS".
@@ -59,7 +59,7 @@ export const DEFAULT_SESSION_LABEL = "mobile-app";
 
 /**
  * Template used to wrap inbound user messages with emotion/tts instructions.
- * Kept in sync with `EMOTION_PROMPT` in evopaimo-connect.py. The placeholder
+ * Kept in sync with `EMOTION_PROMPT` in pinit-connect.py. The placeholder
  * `{message}` is substituted with the raw user text before dispatching to
  * the agent.
  */
@@ -129,22 +129,22 @@ export function parseInboundFrame(raw: string | Buffer): InboundFrame {
     parsed = JSON.parse(text);
   } catch (err) {
     throw new Error(
-      `EvoPaimo: invalid JSON frame (len=${text.length}): ${String(err)}`,
+      `Pinit: invalid JSON frame (len=${text.length}): ${String(err)}`,
     );
   }
   if (!parsed || typeof parsed !== "object") {
-    throw new Error("EvoPaimo: frame is not a JSON object");
+    throw new Error("Pinit: frame is not a JSON object");
   }
   const frame = parsed as { type?: unknown };
   if (frame.type === "ping") return { type: "ping" };
   if (frame.type === "message") {
     const m = parsed as InboundMessageFrame;
     if (typeof m.content !== "string") {
-      throw new Error("EvoPaimo: message.content missing");
+      throw new Error("Pinit: message.content missing");
     }
     if (m.content.length > MAX_MESSAGE_LENGTH) {
       throw new Error(
-        `EvoPaimo: message too long (len=${m.content.length}, max=${MAX_MESSAGE_LENGTH})`,
+        `Pinit: message too long (len=${m.content.length}, max=${MAX_MESSAGE_LENGTH})`,
       );
     }
     return m;
@@ -152,47 +152,47 @@ export function parseInboundFrame(raw: string | Buffer): InboundFrame {
   if (frame.type === "init_request") {
     const m = parsed as InboundInitRequestFrame;
     if (typeof m.agent_id !== "string") {
-      throw new Error("EvoPaimo: init_request.agent_id missing or not a string");
+      throw new Error("Pinit: init_request.agent_id missing or not a string");
     }
     if (m.agent_id.length === 0 || m.agent_id.length > MAX_AGENT_ID_LENGTH) {
       throw new Error(
-        `EvoPaimo: init_request.agent_id length out of bounds (got=${m.agent_id.length}, max=${MAX_AGENT_ID_LENGTH})`,
+        `Pinit: init_request.agent_id length out of bounds (got=${m.agent_id.length}, max=${MAX_AGENT_ID_LENGTH})`,
       );
     }
     if (!SAFE_ID_PATTERN.test(m.agent_id)) {
       throw new Error(
-        "EvoPaimo: init_request.agent_id contains disallowed characters " +
+        "Pinit: init_request.agent_id contains disallowed characters " +
           "(only [A-Za-z0-9_.-] permitted)",
       );
     }
     if (!Array.isArray(m.prompts)) {
-      throw new Error("EvoPaimo: init_request.prompts must be an array");
+      throw new Error("Pinit: init_request.prompts must be an array");
     }
     if (m.prompts.length > MAX_INIT_PROMPTS_PER_REQUEST) {
       throw new Error(
-        `EvoPaimo: init_request too many prompts (got=${m.prompts.length}, max=${MAX_INIT_PROMPTS_PER_REQUEST})`,
+        `Pinit: init_request too many prompts (got=${m.prompts.length}, max=${MAX_INIT_PROMPTS_PER_REQUEST})`,
       );
     }
     for (let i = 0; i < m.prompts.length; i++) {
       const p = m.prompts[i] as { step?: unknown; prompt?: unknown; expect?: unknown };
       if (typeof p?.prompt !== "string") {
-        throw new Error(`EvoPaimo: init_request.prompts[${i}].prompt must be a string`);
+        throw new Error(`Pinit: init_request.prompts[${i}].prompt must be a string`);
       }
       if (p.prompt.length > MAX_INIT_PROMPT_LENGTH) {
         throw new Error(
-          `EvoPaimo: init_request.prompts[${i}].prompt too long ` +
+          `Pinit: init_request.prompts[${i}].prompt too long ` +
             `(got=${p.prompt.length}, max=${MAX_INIT_PROMPT_LENGTH})`,
         );
       }
       if (typeof p.expect !== "undefined" && typeof p.expect !== "string") {
-        throw new Error(`EvoPaimo: init_request.prompts[${i}].expect must be a string`);
+        throw new Error(`Pinit: init_request.prompts[${i}].expect must be a string`);
       }
       if (
         typeof p.expect === "string" &&
         p.expect.length > MAX_INIT_PROMPT_LENGTH
       ) {
         throw new Error(
-          `EvoPaimo: init_request.prompts[${i}].expect too long ` +
+          `Pinit: init_request.prompts[${i}].expect too long ` +
             `(got=${p.expect.length}, max=${MAX_INIT_PROMPT_LENGTH})`,
         );
       }
@@ -200,12 +200,12 @@ export function parseInboundFrame(raw: string | Buffer): InboundFrame {
         typeof p.step !== "undefined" &&
         typeof p.step !== "number"
       ) {
-        throw new Error(`EvoPaimo: init_request.prompts[${i}].step must be a number`);
+        throw new Error(`Pinit: init_request.prompts[${i}].step must be a number`);
       }
     }
     return m;
   }
-  throw new Error(`EvoPaimo: unknown inbound frame type: ${String(frame.type)}`);
+  throw new Error(`Pinit: unknown inbound frame type: ${String(frame.type)}`);
 }
 
 /** Narrow an arbitrary emotion string to a valid VALID_EMOTIONS member. */

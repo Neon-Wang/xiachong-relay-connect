@@ -2,7 +2,7 @@ import {
   defineChannelPluginEntry,
   type OpenClawPluginApi,
 } from "openclaw/plugin-sdk/channel-core";
-import { evopaimoPlugin } from "./src/channel.js";
+import { pinitPlugin } from "./src/channel.js";
 
 /**
  * The shape returned by `defineChannelPluginEntry` is a private type inside
@@ -13,23 +13,23 @@ import { evopaimoPlugin } from "./src/channel.js";
  * by the SDK regardless of the declared TS type.
  */
 const entry: unknown = defineChannelPluginEntry({
-  id: "evopaimo",
-  name: "EvoPaimo",
+  id: "pinit",
+  name: "Pinit",
   description:
-    "EvoPaimo desktop pet relay channel plugin. Connects to the Cloudflare Workers relay over WebSocket and dispatches client messages into the local OpenClaw agent runtime.",
-  plugin: evopaimoPlugin,
+    "Pinit desktop companion relay channel plugin. Connects to the Cloudflare Workers relay over WebSocket and dispatches client messages into the local OpenClaw agent runtime.",
+  plugin: pinitPlugin,
   registerCliMetadata(api: OpenClawPluginApi) {
     api.registerCli(
       ({ program }) => {
         program
-          .command("evopaimo")
-          .description("EvoPaimo channel — status and diagnostic helpers");
+          .command("pinit")
+          .description("Pinit channel — status and diagnostic helpers");
       },
       {
         descriptors: [
           {
-            name: "evopaimo",
-            description: "EvoPaimo channel management",
+            name: "pinit",
+            description: "Pinit channel management",
             hasSubcommands: false,
           },
         ],

@@ -1,5 +1,5 @@
 /**
- * Thin WebSocket client that mirrors Phase 1 `evopaimo-connect.py`:
+ * Thin WebSocket client that mirrors Phase 1 `pinit-connect.py`:
  *
  *  - Client stays passive on application-level ping: it does NOT emit
  *    `{"type":"ping"}` frames itself. The relay sends `{"type":"ping"}`

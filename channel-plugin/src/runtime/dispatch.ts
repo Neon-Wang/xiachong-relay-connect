@@ -1,5 +1,5 @@
 /**
- * EvoPaimo inbound dispatch bridge.
+ * Pinit inbound dispatch bridge.
  *
  * Takes a raw inbound text from the relay, wraps it with the Phase 1
  * EMOTION_PROMPT, runs it through OpenClaw's `dispatchInboundReplyWithBase`,
@@ -32,7 +32,7 @@ import {
   type OutboundMessageFrame,
 } from "../protocol.js";
 
-const CHANNEL_ID = "evopaimo";
+const CHANNEL_ID = "pinit";
 
 export type GatewayLogSink = {
   info?: (message: string) => void;
@@ -100,7 +100,7 @@ export async function dispatchInboundMessage(
       peer: { kind: "direct", id: sessionId },
     });
   } catch (err) {
-    log?.error?.(`evopaimo: route resolution failed: ${String(err)}`);
+    log?.error?.(`pinit: route resolution failed: ${String(err)}`);
     return { ok: false, errorMessage: `[Error] route: ${String(err)}` };
   }
 
@@ -120,8 +120,8 @@ export async function dispatchInboundMessage(
   // gets safe values when the string lands in the LLM-visible envelope.
   const safeFrom = sanitizeFromField(from);
   const envelopeBody = channelRuntime.reply.formatAgentEnvelope({
-    channel: "EvoPaimo",
-    from: safeFrom === "unknown" ? "evopaimo:user" : `evopaimo:user:${safeFrom}`,
+    channel: "Pinit",
+    from: safeFrom === "unknown" ? "pinit:user" : `pinit:user:${safeFrom}`,
     timestamp: Date.now(),
     previousTimestamp,
     envelope: envelopeOptions,
@@ -133,20 +133,20 @@ export async function dispatchInboundMessage(
     BodyForAgent: promptBody,
     RawBody: promptBody,
     CommandBody: promptBody,
-    From: `evopaimo:${sessionId}`,
-    To: `evopaimo:${sessionId}`,
+    From: `pinit:${sessionId}`,
+    To: `pinit:${sessionId}`,
     SessionKey: route.sessionKey,
     AccountId: route.accountId,
     ChatType: "direct",
     ConversationLabel: sessionId,
-    SenderName: safeFrom === "unknown" ? "evopaimo user" : `evopaimo:${safeFrom}`,
+    SenderName: safeFrom === "unknown" ? "pinit user" : `pinit:${safeFrom}`,
     SenderId: sessionId,
     Provider: CHANNEL_ID,
     Surface: CHANNEL_ID,
     MessageSid: randomUUID(),
     Timestamp: Date.now(),
     OriginatingChannel: CHANNEL_ID,
-    OriginatingTo: `evopaimo:${sessionId}`,
+    OriginatingTo: `pinit:${sessionId}`,
     CommandAuthorized: false,
   });
 
@@ -170,16 +170,16 @@ export async function dispatchInboundMessage(
       core,
       deliver,
       onRecordError: (err: unknown) => {
-        log?.warn?.(`evopaimo: record session failed: ${String(err)}`);
+        log?.warn?.(`pinit: record session failed: ${String(err)}`);
       },
       onDispatchError: (err: unknown, info: { kind: string }) => {
         dispatchError = err;
-        log?.error?.(`evopaimo ${info.kind} reply failed: ${String(err)}`);
+        log?.error?.(`pinit ${info.kind} reply failed: ${String(err)}`);
       },
     });
   } catch (err) {
     dispatchError = err;
-    log?.error?.(`evopaimo: dispatch threw: ${String(err)}`);
+    log?.error?.(`pinit: dispatch threw: ${String(err)}`);
   }
 
   if (dispatchError && !bufferedText) {
@@ -217,7 +217,7 @@ export async function dispatchInboundMessage(
 /**
  * Dispatch one init-request prompt step (multi-turn soul initialization).
  *
- * Mirrors Phase 1 `handle_init` in evopaimo-connect.py: each prompt is
+ * Mirrors Phase 1 `handle_init` in pinit-connect.py: each prompt is
  * dispatched serially against a `init-<agent_id>` session, and the raw
  * assistant text (after stripping `<think>` blocks) is returned so the
  * caller can send it back as `init_response`.
@@ -245,7 +245,7 @@ export async function dispatchInitPrompt(
     });
   } catch (err) {
     const msg = `[Error] OpenClaw 调用失败: ${String(err)}`;
-    log?.error?.(`evopaimo init: route resolution failed: ${String(err)}`);
+    log?.error?.(`pinit init: route resolution failed: ${String(err)}`);
     return { ok: false, content: msg };
   }
 
@@ -259,8 +259,8 @@ export async function dispatchInitPrompt(
     sessionKey: route.sessionKey,
   });
   const envelopeBody = channelRuntime.reply.formatAgentEnvelope({
-    channel: "EvoPaimo",
-    from: `evopaimo:init:${safeAgentId}`,
+    channel: "Pinit",
+    from: `pinit:init:${safeAgentId}`,
     timestamp: Date.now(),
     previousTimestamp,
     envelope: envelopeOptions,
@@ -271,20 +271,20 @@ export async function dispatchInitPrompt(
     BodyForAgent: promptText,
     RawBody: promptText,
     CommandBody: promptText,
-    From: `evopaimo:init:${safeAgentId}`,
-    To: `evopaimo:init:${safeAgentId}`,
+    From: `pinit:init:${safeAgentId}`,
+    To: `pinit:init:${safeAgentId}`,
     SessionKey: route.sessionKey,
     AccountId: route.accountId,
     ChatType: "direct",
     ConversationLabel: initLabel,
-    SenderName: "evopaimo init",
+    SenderName: "pinit init",
     SenderId: initLabel,
     Provider: CHANNEL_ID,
     Surface: CHANNEL_ID,
     MessageSid: randomUUID(),
     Timestamp: Date.now(),
     OriginatingChannel: CHANNEL_ID,
-    OriginatingTo: `evopaimo:init:${safeAgentId}`,
+    OriginatingTo: `pinit:init:${safeAgentId}`,
     CommandAuthorized: false,
   });
 
@@ -307,16 +307,16 @@ export async function dispatchInitPrompt(
       core,
       deliver,
       onRecordError: (e) => {
-        log?.warn?.(`evopaimo init: record session failed: ${String(e)}`);
+        log?.warn?.(`pinit init: record session failed: ${String(e)}`);
       },
       onDispatchError: (e, info) => {
         err = e;
-        log?.error?.(`evopaimo init ${info.kind} failed: ${String(e)}`);
+        log?.error?.(`pinit init ${info.kind} failed: ${String(e)}`);
       },
     });
   } catch (e) {
     err = e;
-    log?.error?.(`evopaimo init: dispatch threw: ${String(e)}`);
+    log?.error?.(`pinit init: dispatch threw: ${String(e)}`);
   }
 
   if (err && !buffered) {
