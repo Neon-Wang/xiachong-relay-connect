@@ -13,11 +13,11 @@ def test_relay_content_validation_rejects_non_text_and_overlong(connector):
 
 
 def test_relay_url_validation_rejects_cleartext_and_non_http_schemes(connector):
-    assert connector.validate_relay_url("https://primo.evomap.ai/") == "https://primo.evomap.ai"
+    assert connector.validate_relay_url("https://pinit-api-staging.aged-sea-ee35.workers.dev/") == "https://pinit-api-staging.aged-sea-ee35.workers.dev"
 
     for relay_url in [
-        "http://primo.evomap.ai",
-        "ws://primo.evomap.ai",
+        "http://pinit-api-staging.aged-sea-ee35.workers.dev",
+        "ws://pinit-api-staging.aged-sea-ee35.workers.dev",
         "file:///tmp/relay",
         "javascript:alert(1)",
         "not a url",

@@ -56,12 +56,12 @@ if (args.length === 0) {
 
   Usage:
     npx pinit-relay-connect \\
-      --relay https://primo.evomap.ai \\
+      --relay https://pinit-api-staging.aged-sea-ee35.workers.dev \\
       --link-code LINK_CODE \\
       --secret SECRET
 
   Example (echo mode):
-    npx pinit-relay-connect --relay https://primo.evomap.ai --link-code A7X9K2 --secret f3a8b1c2...
+    npx pinit-relay-connect --relay https://pinit-api-staging.aged-sea-ee35.workers.dev --link-code A7X9K2 --secret f3a8b1c2...
 `);
   process.exit(0);
 }

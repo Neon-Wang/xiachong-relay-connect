@@ -110,7 +110,7 @@ curl -fsSL https://pinit-api.aged-sea-ee35.workers.dev/channel-plugin/latest.jso
 | `/channel-plugin/latest.sha256` | `max-age=60` | 每次发版变 |
 | `/channel-plugin/latest.json` | `max-age=60` | 每次发版变 |
 
-> Staging 镜像（用于客户端 dev 模式 + 内部测试）：把上面 URL 里的主机换成 `primo.evomap.ai`，其余路径相同。生产环境请坚持用 `pinit-api.aged-sea-ee35.workers.dev`。
+> Staging 镜像（用于客户端 dev 模式 + 内部测试）：把上面 URL 里的主机换成 `pinit-api-staging.aged-sea-ee35.workers.dev`，其余路径相同。生产环境请坚持用 `pinit-api.aged-sea-ee35.workers.dev`。
 
 ### 渠道 C — npm（**PENDING，请勿尝试**）
 
@@ -208,7 +208,7 @@ OpenClaw CLI 会：
 
 | 字段 | 必填 | 含义 |
 |---|---|---|
-| `relayUrl` | yes | Cloudflare Workers relay URL，**必须 `https://`**（0.1.1 起强制；`http://` 会在启动时被插件直接拒绝，避免凭证以明文泄露）。生产 = `https://pinit-api.aged-sea-ee35.workers.dev`，staging = `https://primo.evomap.ai`。 |
+| `relayUrl` | yes | Cloudflare Workers relay URL，**必须 `https://`**（0.1.1 起强制；`http://` 会在启动时被插件直接拒绝，避免凭证以明文泄露）。生产 = `https://pinit-api.aged-sea-ee35.workers.dev`，staging = `https://pinit-api-staging.aged-sea-ee35.workers.dev`。 |
 | `linkCode` | yes | Pinit 桌面客户端 → 配对面板里的 6 位字符配对码 |
 | `secret` | yes | 与 `linkCode` 一起出现的 64 位十六进制密钥；插件只在第一次 `/api/link` 时用它，之后用换出来的长效 `agent_token`，并把 `agent_token` 写在 `~/.openclaw/channels/pinit/state-default.json`（mode `0600`） |
 | `sessionLabel` | no（默认 `mobile-app`） | 写入会话元数据，`openclaw status` 能看到 |

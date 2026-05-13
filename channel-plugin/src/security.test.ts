@@ -41,7 +41,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
         {
           channels: {
             pinit: {
-              relayUrl: "http://primo.evomap.ai",
+              relayUrl: "http://pinit-api-staging.aged-sea-ee35.workers.dev",
               linkCode: "abc123",
               secret: "deadbeefcafebabe",
             },
@@ -58,7 +58,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
         {
           channels: {
             pinit: {
-              relayUrl: "ws://primo.evomap.ai",
+              relayUrl: "ws://pinit-api-staging.aged-sea-ee35.workers.dev",
               linkCode: "abc123",
               secret: "deadbeefcafebabe",
             },
@@ -94,7 +94,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
         {
           channels: {
             pinit: {
-              relayUrl: "https://primo.evomap.ai",
+              relayUrl: "https://pinit-api-staging.aged-sea-ee35.workers.dev",
               linkCode: "abc123",
               secret: "deadbeefcafebabe",
             },

@@ -61,7 +61,7 @@ Pinit Relay Connector (Secure Channel Worker)
 用法:
     # 1. 启动连接（首次需 link-code + secret 配对，之后会自动用保存的 agent_token）
     pinit-connect \\
-        --relay https://primo.evomap.ai \\
+        --relay https://pinit-api-staging.aged-sea-ee35.workers.dev \\
         --link-code A7X9K2 \\
         --secret f3a8b1c2d4e5
 

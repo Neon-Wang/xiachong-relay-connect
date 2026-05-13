@@ -7,7 +7,7 @@ describe("pinit channel plugin — M1 skeleton", () => {
   const validConfig = {
     channels: {
       pinit: {
-        relayUrl: "https://primo.evomap.ai",
+        relayUrl: "https://pinit-api-staging.aged-sea-ee35.workers.dev",
         linkCode: "abc123",
         secret: "deadbeefcafebabe",
       },
@@ -20,7 +20,7 @@ describe("pinit channel plugin — M1 skeleton", () => {
 
   it("resolveAccount returns normalized credentials", () => {
     const account = resolveAccount(validConfig as any, null);
-    expect(account.relayUrl).toBe("https://primo.evomap.ai");
+    expect(account.relayUrl).toBe("https://pinit-api-staging.aged-sea-ee35.workers.dev");
     expect(account.linkCode).toBe("abc123");
     expect(account.secret).toBe("deadbeefcafebabe");
     expect(account.sessionLabel).toBe("mobile-app");

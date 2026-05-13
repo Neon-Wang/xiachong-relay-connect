@@ -27,7 +27,7 @@ import requests
 import websockets
 
 
-DEFAULT_RELAY = "https://primo.evomap.ai"
+DEFAULT_RELAY = "https://pinit-api-staging.aged-sea-ee35.workers.dev"
 
 
 def register(relay_url: str) -> dict[str, Any]:
