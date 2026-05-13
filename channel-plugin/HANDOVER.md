@@ -178,8 +178,8 @@ git push origin channel-plugin-vX.Y.Z
 2. `pnpm pack` → `pinit-channel-X.Y.Z.tgz`，算 sha256
 3. 生成 `latest.sha256`（shasum 格式）和 `latest.json`（含 `name/version/sha256/size/releasedAt/gitSha/downloads`）
 4. **R2 上传 4 件套到两个 bucket**：
-   - `pinit-connector-staging/channel-plugin/v<ver>.tgz` + `latest.tgz` + `latest.sha256` + `latest.json`
-   - `pinit-connector-prod/channel-plugin/v<ver>.tgz` + `latest.tgz` + `latest.sha256` + `latest.json`
+   - `xiachong-connector-staging/channel-plugin/v<ver>.tgz` + `latest.tgz` + `latest.sha256` + `latest.json`
+   - `xiachong-connector-prod/channel-plugin/v<ver>.tgz` + `latest.tgz` + `latest.sha256` + `latest.json`
 5. **如果是 tag 推送**：再创建 GitHub Release `channel-plugin-vX.Y.Z`，挂载 tarball + sha256 + json
 6. ~~npm publish~~ — **PENDING**，已注释，详见 [§6](#6-npm-通道重启清单)
 
@@ -221,8 +221,8 @@ R2 的 `v<semver>.tgz` 是 immutable，回任意旧版只需把 `latest.tgz` 复
 ```bash
 # 在 workers 目录用 wrangler；或者直接在 Cloudflare 控制台手动 copy R2 对象
 cd workers
-wrangler r2 object get pinit-connector-prod/channel-plugin/v0.1.0.tgz --file /tmp/old.tgz
-wrangler r2 object put  pinit-connector-prod/channel-plugin/latest.tgz --file /tmp/old.tgz \
+wrangler r2 object get xiachong-connector-prod/channel-plugin/v0.1.0.tgz --file /tmp/old.tgz
+wrangler r2 object put  xiachong-connector-prod/channel-plugin/latest.tgz --file /tmp/old.tgz \
   --content-type "application/gzip" --remote
 # 重新生成 latest.sha256 / latest.json 也同理
 ```
@@ -306,8 +306,8 @@ curl -i "https://pinit-api.aged-sea-ee35.workers.dev/channel-plugin/../../../etc
 
 | Bucket | 用途 | 路径前缀 |
 |---|---|---|
-| `pinit-connector-prod` | 生产环境 channel plugin + connector 脚本 | `channel-plugin/`、`connector/` |
-| `pinit-connector-staging` | Staging 环境同上 | `channel-plugin/`、`connector/` |
+| `xiachong-connector-prod` | 生产环境 channel plugin + connector 脚本 | `channel-plugin/`、`connector/` |
+| `xiachong-connector-staging` | Staging 环境同上 | `channel-plugin/`、`connector/` |
 | `pinit-gen-prod` / `-staging` | Avatar 生成产物（`.pinit` 加密包） | `gen/` |
 | `pinit-bucket` / `pinit-bucket-staging` | 通用资源 | — |
 
