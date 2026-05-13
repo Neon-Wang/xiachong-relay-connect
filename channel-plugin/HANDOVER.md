@@ -177,9 +177,9 @@ git push origin channel-plugin-vX.Y.Z
 1. `pnpm install --frozen-lockfile` + typecheck + test + build + attack-sim
 2. `pnpm pack` → `pinit-channel-X.Y.Z.tgz`，算 sha256
 3. 生成 `latest.sha256`（shasum 格式）和 `latest.json`（含 `name/version/sha256/size/releasedAt/gitSha/downloads`）
-4. **R2 上传 4 件套到两个 bucket**：
-   - `xiachong-connector-staging/channel-plugin/v<ver>.tgz` + `latest.tgz` + `latest.sha256` + `latest.json`
-   - `xiachong-connector-prod/channel-plugin/v<ver>.tgz` + `latest.tgz` + `latest.sha256` + `latest.json`
+4. **R2 上传 4 件套到两个 runtime bucket**：
+   - `xiachong-gen-staging/channel-plugin/v<ver>.tgz` + `latest.tgz` + `latest.sha256` + `latest.json`
+   - `pinit-gen-prod/channel-plugin/v<ver>.tgz` + `latest.tgz` + `latest.sha256` + `latest.json`
 5. **如果是 tag 推送**：再创建 GitHub Release `channel-plugin-vX.Y.Z`，挂载 tarball + sha256 + json
 6. ~~npm publish~~ — **PENDING**，已注释，详见 [§6](#6-npm-通道重启清单)
 
@@ -221,8 +221,8 @@ R2 的 `v<semver>.tgz` 是 immutable，回任意旧版只需把 `latest.tgz` 复
 ```bash
 # 在 workers 目录用 wrangler；或者直接在 Cloudflare 控制台手动 copy R2 对象
 cd workers
-wrangler r2 object get xiachong-connector-prod/channel-plugin/v0.1.0.tgz --file /tmp/old.tgz
-wrangler r2 object put  xiachong-connector-prod/channel-plugin/latest.tgz --file /tmp/old.tgz \
+wrangler r2 object get pinit-gen-prod/channel-plugin/v0.1.0.tgz --file /tmp/old.tgz
+wrangler r2 object put  pinit-gen-prod/channel-plugin/latest.tgz --file /tmp/old.tgz \
   --content-type "application/gzip" --remote
 # 重新生成 latest.sha256 / latest.json 也同理
 ```
@@ -306,10 +306,8 @@ curl -i "https://pinit-api.aged-sea-ee35.workers.dev/channel-plugin/../../../etc
 
 | Bucket | 用途 | 路径前缀 |
 |---|---|---|
-| `xiachong-connector-prod` | 生产环境 channel plugin + connector 脚本 | `channel-plugin/`、`connector/` |
-| `xiachong-connector-staging` | Staging 环境同上 | `channel-plugin/`、`connector/` |
-| `pinit-gen-prod` / `-staging` | Avatar 生成产物（`.pinit` 加密包） | `gen/` |
-| `pinit-bucket` / `pinit-bucket-staging` | 通用资源 | — |
+| `pinit-gen-prod` | 生产 runtime bucket：avatar 生成产物、migration 备份、channel plugin、connector 脚本 | `gen/`、`migrations/`、`channel-plugin/`、`connector/` |
+| `xiachong-gen-staging` | Staging runtime bucket，同上；允许保留内部代号 | `gen/`、`migrations/`、`channel-plugin/`、`connector/` |
 
 > **千万不要**手动在错误账号 (`9e17cd2512fe5dc7aa8bd8b09ed250e9`) 下创建同名 bucket——2026-04-22 因 wrangler 用了错账号自动建出 `pinit-migrations-staging`/`-gen-staging`/`-connector-staging` 三个空 bucket，要手动 `wrangler r2 bucket delete` 清理。
 
