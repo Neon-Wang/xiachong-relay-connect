@@ -14,7 +14,7 @@
         "properties": {
           "relayUrl": {
             "type": "string",
-            "description": "HTTPS base URL of the Pinit relay (e.g. https://pinit-api-staging.aged-sea-ee35.workers.dev). The plugin will derive wss://.../ws/openclaw from this."
+            "description": "HTTPS base URL of the Pinit relay (e.g. https://xiachong-api-staging.aged-sea-ee35.workers.dev). The plugin will derive wss://.../ws/openclaw from this."
           },
           "linkCode": {
             "type": "string",

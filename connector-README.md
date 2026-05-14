@@ -122,7 +122,7 @@ cd xiachong-relay-connect
 pip install -r requirements.txt
 
 python3 -u pinit-connect.py \
-  --relay https://pinit-api-staging.aged-sea-ee35.workers.dev \
+  --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev \
   --link-code 你的LINK_CODE \
   --secret 你的SECRET
 ```
@@ -221,7 +221,7 @@ connector 与 OpenClaw 之间不需要额外凭证——通过 `subprocess` 调�
 
 ```bash
 # 1. 下载脚本（已有则跳过）
-curl -sO https://pinit-api-staging.aged-sea-ee35.workers.dev/connector/pinit-connect.py
+curl -sO https://xiachong-api-staging.aged-sea-ee35.workers.dev/connector/pinit-connect.py
 
 # 2. 启动 connector
 OPENCLAW_CLI="openclaw" python3 -u pinit-connect.py \
@@ -255,7 +255,7 @@ python3 -u pinit-connect.py status
 
 ```bash
 nohup python3 -u pinit-connect.py \
-  --relay https://pinit-api-staging.aged-sea-ee35.workers.dev \
+  --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev \
   --link-code XXXXXX \
   --secret xxxxxxxx \
   > connector.log 2>&1 & disown
@@ -289,7 +289,7 @@ pytest tests/ -v
 ```bash
 # 1) 本地 register 拿凭证
 connector/.venv/bin/python3.14 connector/scripts/e2e-test-client.py \
-  --relay https://pinit-api-staging.aged-sea-ee35.workers.dev register
+  --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev register
 # 输出里会有 link_code / secret / client_token
 
 # 2) 在 VM（或本地）启动新 connector，带上面输出的 link_code + secret
@@ -297,7 +297,7 @@ connector/.venv/bin/python3.14 connector/scripts/e2e-test-client.py \
 
 # 3) 发一条测试消息
 connector/.venv/bin/python3.14 connector/scripts/e2e-test-client.py \
-  --relay https://pinit-api-staging.aged-sea-ee35.workers.dev \
+  --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev \
   --reuse <LINK_CODE> <SECRET> <CLIENT_TOKEN> \
   --message "ping test" \
   --idle-timeout 60
@@ -325,11 +325,11 @@ curl -sS -X POST http://127.0.0.1:11453/exec \
 # 3) 用这组凭证在 VM/本地启 connector
 #    npm 通道 PENDING，下面这种 `npx pinit-relay-connect` 当前用不了。
 #    替代：直接跑 git clone 出来的 pinit-connect.py。
-# python3 -u connector/pinit-connect.py --relay https://pinit-api-staging.aged-sea-ee35.workers.dev \
+# python3 -u connector/pinit-connect.py --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev \
 #     --link-code ABCDEF --secret <the-secret> \
 #     --agent-file /tmp/agent.json
 # (历史命令，npm 重启后再恢复:)
-# npx pinit-relay-connect --relay https://pinit-api-staging.aged-sea-ee35.workers.dev \
+# npx pinit-relay-connect --relay https://xiachong-api-staging.aged-sea-ee35.workers.dev \
 #   --link-code ABCDEF --secret <the-secret> \
 #   --agent-file /tmp/agent.json
 
@@ -351,7 +351,7 @@ curl -sS -X POST http://127.0.0.1:11453/exec \
 ```bash
 mkdir -p ~/.config/pinit
 cat > ~/.config/pinit/relay.env <<'EOF'
-PINIT_RELAY_URL=https://pinit-api-staging.aged-sea-ee35.workers.dev
+PINIT_RELAY_URL=https://xiachong-api-staging.aged-sea-ee35.workers.dev
 PINIT_LINK_CODE=你的LINK_CODE
 PINIT_SECRET=你的SECRET
 EOF
@@ -372,7 +372,7 @@ systemctl --user enable --now pinit-relay.service
 >
 > **npm 发布状态（PENDING）**：CI 工作流（[`publish-connectors.yml`](../.github/workflows/publish-connectors.yml)）中的 npm publish step 已注释掉，包从未在 npm 注册成功。当前用户拿这个脚本的方式：
 > 1. 直接 `git clone Neon-Wang/xiachong-relay-connect`（每次推送 `main` 都自动镜像过去）
-> 2. 或者 `curl -sO https://pinit-api-staging.aged-sea-ee35.workers.dev/connector/pinit-connect.py` 拿单文件
+> 2. 或者 `curl -sO https://xiachong-api-staging.aged-sea-ee35.workers.dev/connector/pinit-connect.py` 拿单文件
 >
 > 重启 npm 通道的步骤见 [`channel-plugin/HANDOVER.md`](./channel-plugin/HANDOVER.md#npm-通道重启清单)。重启之后才需要再读 [`RELEASE.md`](./RELEASE.md) 的 npm 发版部分（标题虽叫"长期 maintainer 参考"，但当前内容已不可执行）。
 

@@ -27,7 +27,7 @@ import requests
 import websockets
 
 
-DEFAULT_RELAY = "https://pinit-api-staging.aged-sea-ee35.workers.dev"
+DEFAULT_RELAY = "https://xiachong-api-staging.aged-sea-ee35.workers.dev"
 
 
 def register(relay_url: str) -> dict[str, Any]:

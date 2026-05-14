@@ -326,18 +326,18 @@ expectEqual(
   "message",
 );
 expectEqual(
-  "F3. valid relayUrl accepted (https://pinit-api-staging.aged-sea-ee35.workers.dev)",
+  "F3. valid relayUrl accepted (https://xiachong-api-staging.aged-sea-ee35.workers.dev)",
   () =>
     resolveAccount({
       channels: {
         pinit: {
-          relayUrl: "https://pinit-api-staging.aged-sea-ee35.workers.dev",
+          relayUrl: "https://xiachong-api-staging.aged-sea-ee35.workers.dev",
           linkCode: "DUMMY1",
           secret: "0".repeat(64),
         },
       },
     }).relayUrl,
-  "https://pinit-api-staging.aged-sea-ee35.workers.dev",
+  "https://xiachong-api-staging.aged-sea-ee35.workers.dev",
 );
 
 let pass = 0;

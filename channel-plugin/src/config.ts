@@ -76,14 +76,14 @@ export function validateRelayUrlScheme(raw: string): void {
   } catch {
     throw new Error(
       `pinit: channels.pinit.relayUrl is not a valid URL (got=${JSON.stringify(raw)}); ` +
-        "must use https:// (e.g. https://pinit-api-staging.aged-sea-ee35.workers.dev)",
+        "must use https:// (e.g. https://xiachong-api-staging.aged-sea-ee35.workers.dev)",
     );
   }
   if (url.protocol !== "https:") {
     throw new Error(
       `pinit: channels.pinit.relayUrl must use https:// scheme to prevent ` +
         `credential interception (got=${JSON.stringify(raw)}, scheme=${url.protocol}); ` +
-        "configure a TLS-protected relay endpoint (e.g. https://pinit-api-staging.aged-sea-ee35.workers.dev).",
+        "configure a TLS-protected relay endpoint (e.g. https://xiachong-api-staging.aged-sea-ee35.workers.dev).",
     );
   }
   if (!url.host) {
@@ -103,7 +103,7 @@ export function resolveAccount(
   const secret = typeof section?.secret === "string" ? section.secret.trim() : "";
   if (!relayUrl) {
     throw new Error(
-      "pinit: channels.pinit.relayUrl is required (e.g. https://pinit-api-staging.aged-sea-ee35.workers.dev)",
+      "pinit: channels.pinit.relayUrl is required (e.g. https://xiachong-api-staging.aged-sea-ee35.workers.dev)",
     );
   }
   validateRelayUrlScheme(relayUrl);

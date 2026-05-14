@@ -469,11 +469,11 @@ OPENCLAW_CLI=/home/user/.npm-global/bin/openclaw python3 -u pinit-connect.py ...
 
 ```bash
 # 检查是否能访问 relay 服务器
-curl -s -o /dev/null -w "%{http_code}" https://pinit-api-staging.aged-sea-ee35.workers.dev/health || echo "无法访问 staging"
+curl -s -o /dev/null -w "%{http_code}" https://xiachong-api-staging.aged-sea-ee35.workers.dev/health || echo "无法访问 staging"
 curl -s -o /dev/null -w "%{http_code}" https://pinit-api.aged-sea-ee35.workers.dev/health || echo "无法访问 production"
 
 # 检查 DNS 解析
-nslookup pinit-api-staging.aged-sea-ee35.workers.dev 2>/dev/null || host pinit-api-staging.aged-sea-ee35.workers.dev 2>/dev/null || echo "DNS 解析失败"
+nslookup xiachong-api-staging.aged-sea-ee35.workers.dev 2>/dev/null || host xiachong-api-staging.aged-sea-ee35.workers.dev 2>/dev/null || echo "DNS 解析失败"
 
 # 检查是否有代理干扰
 echo $http_proxy $https_proxy $HTTP_PROXY $HTTPS_PROXY

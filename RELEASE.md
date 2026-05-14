@@ -5,7 +5,7 @@
 > **Status (2026-04-22)**: `pinit-relay-connect` 的 npm 通道当前**整个搁置**。
 > - `.github/workflows/publish-connectors.yml` 中的 `Publish connector to npm` step 已显式注释。
 > - 包从未在 npmjs.com 注册成功（5 次 CI publish 都因首次发包必须手动而失败）。
-> - 用户实际拿脚本的两条腿是 **GitHub mirror**（`Neon-Wang/xiachong-relay-connect` 自动同步）+ **R2 直链**（`https://pinit-api-staging.aged-sea-ee35.workers.dev/connector/pinit-connect.py`）。
+> - 用户实际拿脚本的两条腿是 **GitHub mirror**（`Neon-Wang/xiachong-relay-connect` 自动同步）+ **R2 直链**（`https://xiachong-api-staging.aged-sea-ee35.workers.dev/connector/pinit-connect.py`）。
 >
 > **当前真正生效的发版流程**：照常 push 到 `main` → CI 自动同步 GitHub 镜像 + 上传 R2，零人工。本文 §三的"日常发版"流程对 GitHub/R2 部分有效，但所有 npm 步骤都暂时不要执行。
 >
@@ -37,7 +37,7 @@
 | npm 包 `pinit-relay-connect` | ❌ **不存在**（`npm view pinit-relay-connect version` → 404） |
 | 旧 npm 包 `pinit-relay-connect` | ❌ **也不存在**（README 里写的"已 deprecate"是基于错误假设，实际从未发布过） |
 | GitHub 镜像 `Neon-Wang/xiachong-relay-connect` | ✅ 存在且已 sync 到 hooks 集成代码（CI 的 sync 步骤是成功的，只有 npm publish 步骤失败） |
-| Cloudflare R2 上的 `pinit-connect.py` | ✅ 已上传（CI 的 R2 步骤也是成功的）— 这意味着 `https://pinit-api-staging.aged-sea-ee35.workers.dev/connector/pinit-connect.py` 一直能拉到最新脚本 |
+| Cloudflare R2 上的 `pinit-connect.py` | ✅ 已上传（CI 的 R2 步骤也是成功的）— 这意味着 `https://xiachong-api-staging.aged-sea-ee35.workers.dev/connector/pinit-connect.py` 一直能拉到最新脚本 |
 | `connector/package.json` 版本号 | `1.3.0`（1.2.0 从未上过 npm） |
 | Phase 1 hooks 集成代码 | ⛔ 已撤除（2026-04-22，commit `b42ddff`）——原因见 [`docs/specs/openclaw-hooks-integration/POSTMORTEM.md`](../docs/specs/openclaw-hooks-integration/POSTMORTEM.md) |
 | 当前 transport 口径 | Channel Plugin 为推荐主路径；本手册仅维护 CLI Connector 兼容 / 保底包（subprocess `openclaw agent --message`） |
@@ -239,7 +239,7 @@ gh api repos/Neon-Wang/xiachong-relay-connect/commits/main --jq '.commit.message
 # 应包含 "Sync from monorepo: <SHA>"
 
 # 3) R2 端点能拉到最新脚本
-curl -sI https://pinit-api-staging.aged-sea-ee35.workers.dev/connector/pinit-connect.py | grep -i last-modified
+curl -sI https://xiachong-api-staging.aged-sea-ee35.workers.dev/connector/pinit-connect.py | grep -i last-modified
 
 # 4) npx 能装并跑
 npx --yes pinit-relay-connect@latest --help

@@ -41,7 +41,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
         {
           channels: {
             pinit: {
-              relayUrl: "http://pinit-api-staging.aged-sea-ee35.workers.dev",
+              relayUrl: "http://xiachong-api-staging.aged-sea-ee35.workers.dev",
               linkCode: "abc123",
               secret: "deadbeefcafebabe",
             },
@@ -58,7 +58,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
         {
           channels: {
             pinit: {
-              relayUrl: "ws://pinit-api-staging.aged-sea-ee35.workers.dev",
+              relayUrl: "ws://xiachong-api-staging.aged-sea-ee35.workers.dev",
               linkCode: "abc123",
               secret: "deadbeefcafebabe",
             },
@@ -94,7 +94,7 @@ describe("S-1: relayUrl protocol whitelist (P0)", () => {
         {
           channels: {
             pinit: {
-              relayUrl: "https://pinit-api-staging.aged-sea-ee35.workers.dev",
+              relayUrl: "https://xiachong-api-staging.aged-sea-ee35.workers.dev",
               linkCode: "abc123",
               secret: "deadbeefcafebabe",
             },

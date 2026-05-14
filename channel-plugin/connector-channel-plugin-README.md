@@ -126,7 +126,7 @@ Edit `~/.openclaw/openclaw.json`:
   },
   "channels": {
     "pinit": {
-      "relayUrl": "https://pinit-api-staging.aged-sea-ee35.workers.dev",
+      "relayUrl": "https://xiachong-api-staging.aged-sea-ee35.workers.dev",
       "linkCode": "ABC123",
       "secret": "64-hex-chars-from-electron-client",
       "sessionLabel": "mobile-app",
@@ -143,7 +143,7 @@ Edit `~/.openclaw/openclaw.json`:
 
 | Field | Required | Meaning |
 |---|---|---|
-| `relayUrl` | yes | Cloudflare Workers relay base URL (no trailing slash). `https://pinit-api-staging.aged-sea-ee35.workers.dev` = staging. `https://pinit-api.aged-sea-ee35.workers.dev` = production. |
+| `relayUrl` | yes | Cloudflare Workers relay base URL (no trailing slash). `https://xiachong-api-staging.aged-sea-ee35.workers.dev` = staging. `https://pinit-api.aged-sea-ee35.workers.dev` = production. |
 | `linkCode` | yes | 6-char pairing code shown in the Pinit desktop client's connection panel. |
 | `secret` | yes | 64-hex shared secret emitted alongside `linkCode`. The plugin only uses it for the initial `/api/link` call; a long-lived `agent_token` is derived and persisted afterwards. |
 | `sessionLabel` | no (default `mobile-app`) | Label recorded on each inbound session; shown in `openclaw status` and written into agent session metadata. |
@@ -294,7 +294,7 @@ Expected outcome:
 [gateway] shutdown error: Error: pinit: channels.pinit.relayUrl
   must use https:// scheme to prevent credential interception
   (got="http://attacker.evil/", scheme=http:);
-  configure a TLS-protected relay endpoint (e.g. https://pinit-api-staging.aged-sea-ee35.workers.dev).
+  configure a TLS-protected relay endpoint (e.g. https://xiachong-api-staging.aged-sea-ee35.workers.dev).
 ```
 
 The connector never opens the WebSocket — `linkCode + secret` cannot leak.
